@@ -325,9 +325,21 @@ def load_config() -> Config:
     for name, layer in layers:
         for i, entry in enumerate(layer.get("sources") or []):
             where = f"{name} source #{i + 1}"
-            src_owner, src_repo = entry.get("owner"), entry.get("repo")
-            if not src_owner or not src_repo:
-                Out.die(f"{where} needs both `owner` and `repo`")
+            src_repo = entry.get("repo")
+            if not src_repo:
+                Out.die(f"{where} needs a `repo`")
+
+            # Default the prefix to the org the repo belongs to, so
+            # mattpocock/skills yields "mattpocock".
+            src_owner = entry.get("owner")
+            if not src_owner:
+                parts = split_git_url(Source(owner="", repo=str(src_repo)).url)
+                if len(parts) < 3:
+                    Out.die(
+                        f"{where}: could not read an owner from "
+                        f"'{src_repo}'. Set `owner` explicitly."
+                    )
+                src_owner = parts[-2]
 
             retired = {"include", "exclude"} & set(entry)
             if retired:

@@ -119,11 +119,13 @@ Add an entry to `sources` in `config.yaml` and run sync:
 
 ```yaml
 sources:
-  - owner: someone          # prefix for every skill from this repo
-    repo: https://github.com/someone/skills   # or "someone/skills"
+  - repo: https://github.com/someone/skills   # or "someone/skills"
     ref: main               # branch, tag, or commit (optional)
     path: skills            # subdirectory to scan (optional)
 ```
+
+Skills from this source install as `someone-<skill>`: the prefix defaults to
+the org the repo belongs to. Set `owner` explicitly to override it.
 
 `path` also takes a list, to pull from several subdirectories:
 
