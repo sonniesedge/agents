@@ -1,18 +1,71 @@
 # rules/
 
-Personal instructions, injected into the context of **every** session.
+Personal instructions, loaded into **every** session. One file per theme —
+`git.md`, `testing.md`, `token-budget.md` — rather than one long file.
 
-`AGENTS.md` is prose telling any agent how to behave — conventions, standing
-preferences, things you would otherwise repeat in each conversation. It is
-always loaded, so keep it short.
-
-Linked by the `rules` target:
+Linked as a directory:
 
 ```yaml
 targets:
   opencode:
-    rules: ~/.config/opencode/AGENTS.md
+    rules: ~/.config/opencode/rules
+  claude:
+    rules: ~/.claude/rules
 ```
+
+Both tools read a rules directory, so the same files serve both.
+
+## opencode needs wiring, Claude Code does not
+
+|                    | Claude Code                | opencode                          |
+| ------------------ | -------------------------- | --------------------------------- |
+| wiring             | none, reads it natively    | must be globbed from its config   |
+| discovery          | recursive, subdirs work    | basename glob only — **flat**     |
+| `paths:` frontmatter | scopes a rule to matching files | ignored, rule always loads   |
+
+For opencode, `settings/opencode/opencode.jsonc` needs:
+
+```jsonc
+"instructions": ["~/.config/opencode/rules/*.md"]
+```
+
+Use `~` or an absolute path. A **relative** entry globs upward from whatever
+project you are in, not from the config directory — a quiet way to load the
+wrong files.
+
+Because that config is gitignored, a fresh clone can have rules linked but
+nothing loading them. `sync` checks for this and warns:
+
+```
+warning: opencode: rules are linked to ~/.config/opencode/rules but
+opencode.jsonc does not glob them, so they will not load.
+```
+
+## Keep it flat
+
+opencode globs the basename only, so `rules/**/*.md` will not work there even
+though Claude Code would find it. Subdirectories silently load for one tool
+and not the other, so keep every rule at the top level.
+
+## Keep it short
+
+Everything here costs context in every session, in every tool. Claude Code
+suggests staying under 200 lines per file and notes that adherence drops as
+files grow. For anything procedural or occasional, write a skill instead —
+skills load only when the task matches.
+
+Claude Code can scope a rule to matching files with `paths:` frontmatter:
+
+```markdown
+---
+paths:
+  - "src/**/*.ts"
+---
+```
+
+opencode ignores that frontmatter and loads the rule regardless, so a
+path-scoped rule behaves differently in each tool. Use it only for rules that
+are harmless when always loaded.
 
 ## Not to be confused with `agents/`
 
@@ -21,37 +74,12 @@ targets:
 | what | instructions | agent definitions |
 | effect | changes how every agent behaves | creates agents to choose between |
 | loaded | always | only when that agent is invoked |
-| count | one file | one file per agent |
-
-The `AGENTS.md` filename is opencode's, not ours —
-[opencode reads global rules](https://opencode.ai/docs/rules/) from exactly
-`~/.config/opencode/AGENTS.md`. It has nothing to do with the `agents/`
-directory.
-
-## Shared across tools
-
-This one file can land under whatever name each tool expects, so a second
-tool needs no second copy:
-
-```yaml
-targets:
-  opencode:
-    rules: ~/.config/opencode/AGENTS.md
-  claude:
-    rules: ~/.claude/CLAUDE.md
-```
-
-## Keeping it short
-
-Everything here costs context in every session. For detail you only sometimes
-need, reference it lazily instead and let the agent read it on demand:
-
-```markdown
-For my git conventions: @~/.config/opencode/rules/git.md
-```
+| count | one file per theme | one file per agent |
 
 ## Why not the repo root?
 
-This is deliberately not the root `AGENTS.md`. opencode checks for local rule
+These are deliberately not a root `AGENTS.md`. Both tools check for local rule
 files before global ones, so a root copy would make your personal rules double
 as this repo's project rules whenever you worked in here.
+
+`README.md` is skipped when linking, so this file is not loaded as a rule.

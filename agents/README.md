@@ -22,11 +22,10 @@ This directory is plural to match the target *kind*.
 | what | agent definitions | instructions |
 | effect | creates agents to choose between | changes how every agent behaves |
 | loaded | only when that agent is invoked | always |
-| count | one file per agent | one file |
+| count | one file per agent | one file per theme |
 
-`rules/AGENTS.md` is named for the file opencode expects at
-`~/.config/opencode/AGENTS.md`. Despite the name, it belongs to `rules/` and
-has nothing to do with this directory.
+`rules/` holds themed instruction files that apply to every agent. Despite
+`agents/` and `AGENTS.md`-style naming elsewhere, the two are unrelated.
 
 ## Shape of a definition
 

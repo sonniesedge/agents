@@ -25,18 +25,18 @@ owner_remote: origin
 #   skills   directory  <- .build/skills/   (rendered, prefixed)
 #   agents   directory  <- agents/
 #   plugins  directory  <- plugins/
-#   rules    file       <- rules/AGENTS.md
+#   rules    directory  <- rules/
 #   config   file       <- settings/<tool>/<the target's filename>
 #
-# `rules` is shared across tools, so the same file can land as AGENTS.md for
-# one and CLAUDE.md for another. `config` is per-tool, read from a directory
-# named after the tool.
+# `rules` is a flat directory of themed *.md files. Claude Code reads
+# ~/.claude/rules/ natively; opencode needs its config to glob the directory,
+# which sync checks for. Keep it flat: opencode's glob is basename-only.
 targets:
   opencode:
     skills: ~/.config/opencode/skill
     agents: ~/.config/opencode/agent
     plugins: ~/.config/opencode/plugin
-    rules: ~/.config/opencode/AGENTS.md
+    rules: ~/.config/opencode/rules
     config: ~/.config/opencode/opencode.jsonc
 
 # Remote skill sources. Each is a git repo cloned into .vendor/ and scanned

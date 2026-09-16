@@ -14,7 +14,7 @@ config.yaml        owner, symlink targets, remote sources
 config.local.yaml  private settings, layered on top  (gitignored)
 skills/            skills you author          -> installed with your prefix
 agents/            agent definitions          -> named agents to delegate to
-rules/             AGENTS.md                  -> instructions, always loaded
+rules/             themed *.md rule files     -> instructions, always loaded
 plugins/           opencode plugins
 settings/          tool config, one dir per tool     (gitignored)
 scripts/agents.py  the CLI
@@ -28,8 +28,7 @@ own `README.md` explaining it.
 
 `agents/` and `rules/` are the easy pair to confuse. `agents/` defines named
 agents you choose between; `rules/` holds instructions that apply to all of
-them. The file in `rules/` is called `AGENTS.md` only because that is the
-name opencode reads global rules from.
+them, one file per theme.
 
 ## Naming
 
@@ -116,7 +115,7 @@ targets:
     skills: ~/.config/opencode/skill
     agents: ~/.config/opencode/agent
     plugins: ~/.config/opencode/plugin
-    rules: ~/.config/opencode/AGENTS.md
+    rules: ~/.config/opencode/rules
     config: ~/.config/opencode/opencode.jsonc
 ```
 
@@ -127,21 +126,25 @@ Every kind is optional — drop a line to stop managing it. Five are recognised:
 | `skills`  | directory | `.build/skills/` (prefixed)   |
 | `agents`  | directory | `agents/`                     |
 | `plugins` | directory | `plugins/`                    |
-| `rules`   | file      | `rules/AGENTS.md`             |
+| `rules`   | directory | `rules/`                      |
 | `config`  | file      | `<tool>/<target's filename>`  |
 
 Anything else is a typo and sync says so, rather than silently linking
 nothing.
 
-Adding a second tool is config-only. `rules` is shared across tools, so one
-file can land under whatever name each expects:
+Adding a second tool is config-only. `rules` is a directory both tools read,
+so the same themed files serve both:
 
 ```yaml
 targets:
   claude:
     skills: ~/.claude/skills
-    rules: ~/.claude/CLAUDE.md   # same rules/AGENTS.md content
+    rules: ~/.claude/rules
 ```
+
+Claude Code reads `~/.claude/rules/` natively; opencode must be pointed at its
+rules directory from `opencode.jsonc`. Sync warns if that wiring is missing.
+See `rules/README.md`.
 
 `config` is per-tool instead, read from a directory named after the tool —
 `settings/opencode/opencode.jsonc` for the above, `settings/claude/settings.json`
@@ -155,17 +158,10 @@ None of these targets will overwrite a file the repo did not create. If
 something is already there and is not a symlink pointing back here, sync warns
 and leaves it untouched.
 
-Note that `rules/AGENTS.md` deliberately is *not* this repo's root
-`AGENTS.md`. opencode checks for local rule files before global ones, so a
-root `AGENTS.md` would make your personal rules double as this repo's project
-rules whenever you worked in here. The two stay separate.
-
-For rules too big to keep always-on, reference them lazily from within
-`rules/AGENTS.md` rather than loading everything every session:
-
-```markdown
-For my git conventions: @~/.config/opencode/rules/git.md
-```
+Note that `rules/` is deliberately not a root `AGENTS.md`. Both tools check
+for local rule files before global ones, so a root copy would make your
+personal rules double as this repo's project rules whenever you worked in
+here.
 
 ## Requirements
 

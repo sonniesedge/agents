@@ -40,8 +40,8 @@ VENDOR = REPO / ".vendor"
 BUILD = REPO / ".build"
 SKILL_FILE = "SKILL.md"
 # Kinds a tool may declare a target for.
-DIR_KINDS = ("skills", "agents", "plugins")
-FILE_KINDS = ("rules", "config")
+DIR_KINDS = ("skills", "agents", "plugins", "rules")
+FILE_KINDS = ("config",)
 KINDS = DIR_KINDS + FILE_KINDS
 FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---[ \t]*\r?\n?", re.DOTALL)
 NAME_LINE = re.compile(r"^name:.*$", re.MULTILINE)
@@ -445,11 +445,12 @@ def dir_entries(kind: str, built: Path) -> dict[str, Path]:
     if kind == "skills":
         return {d.name: d for d in sorted(built.iterdir()) if d.is_dir()}
 
-    # agents/ and plugins/ are named for their kind.
+    # agents/, plugins/ and rules/ are named for their kind.
     src = REPO / kind
     if not src.is_dir():
         return {}
-    entries = sorted(src.glob("*.md")) if kind == "agents" else sorted(src.iterdir())
+    markdown_only = kind in ("agents", "rules")
+    entries = sorted(src.glob("*.md")) if markdown_only else sorted(src.iterdir())
     # README.md documents the directory; it is not an artefact to link out.
     return {
         f.name: f
@@ -461,13 +462,10 @@ def dir_entries(kind: str, built: Path) -> dict[str, Path]:
 def file_source(tool: str, kind: str, target: Path) -> Path:
     """The repo file a single-file target should point at.
 
-    `rules` is shared across tools, so the same content can land as AGENTS.md
-    for one and CLAUDE.md for another. `config` is per-tool, read from
-    settings/<tool>/ — tool config filenames are generic enough to collide
-    (settings.json, config.toml) so they are kept in separate directories.
+    `config` is per-tool, read from settings/<tool>/ — tool config filenames
+    are generic enough to collide (settings.json, config.toml) so they are
+    kept in separate directories.
     """
-    if kind == "rules":
-        return REPO / "rules" / "AGENTS.md"
     return REPO / "settings" / tool / target.name
 
 
@@ -479,6 +477,50 @@ def link(cfg: Config, built: Path) -> None:
                 link_file(target, file_source(tool, kind, target))
             else:
                 relink(target, dir_entries(kind, built))
+        check_rules_wiring(tool, kinds)
+
+
+# Tools that do not read a rules directory on their own and need to be
+# pointed at it from their config. Claude Code reads ~/.claude/rules/
+# natively, so it is absent here.
+NEEDS_RULES_WIRING = {"opencode": "instructions"}
+
+
+def check_rules_wiring(tool: str, kinds: dict[str, Path]) -> None:
+    """Warn when a linked rules directory is not actually loaded.
+
+    opencode only reads a rules directory if its config globs it. That config
+    is gitignored, so a fresh clone can end up with rules linked but silently
+    never loaded — the one failure this whole target cannot detect itself.
+    """
+    key = NEEDS_RULES_WIRING.get(tool)
+    if key is None or "rules" not in kinds:
+        return
+
+    rules = kinds["rules"]
+    config = kinds.get("config")
+    if config is None:
+        Out.warn(
+            f"{tool}: rules are linked to {rules} but {tool} has no `config` "
+            f"target, so nothing can point `{key}` at them."
+        )
+        return
+
+    source = file_source(tool, "config", config)
+    if not source.exists():
+        Out.warn(f"{tool}: {source} is missing; `{key}` cannot glob {rules}.")
+        return
+
+    # Match on the directory, so any glob shape inside it counts.
+    home = str(Path.home())
+    text = source.read_text(encoding="utf-8")
+    needle = str(rules)
+    if needle not in text and needle.replace(home, "~") not in text:
+        Out.warn(
+            f"{tool}: rules are linked to {rules} but {source.name} does not "
+            f"glob them, so they will not load. Add to `{key}`:\n"
+            f'    "{str(rules).replace(home, "~")}/*.md"'
+        )
 
 
 # --------------------------------------------------------------------------
