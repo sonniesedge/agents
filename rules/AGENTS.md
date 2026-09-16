@@ -5,4 +5,4 @@
 # Tooling
 
 - `brew` is used to install and manage packages.
-- Python is the preferred language for greedfield projects.
+- Python is the preferred language for greenfield projects.
