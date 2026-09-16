@@ -39,6 +39,8 @@ REPO = Path(__file__).resolve().parent.parent
 VENDOR = REPO / ".vendor"
 BUILD = REPO / ".build"
 SKILL_FILE = "SKILL.md"
+# Targets that are a single file rather than a directory of entries.
+FILE_TARGETS = frozenset({"rules"})
 FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---[ \t]*\r?\n?", re.DOTALL)
 NAME_LINE = re.compile(r"^name:.*$", re.MULTILINE)
 
@@ -377,6 +379,35 @@ def relink(target_dir: Path, wanted: dict[str, Path]) -> tuple[int, int]:
     return created, removed
 
 
+def link_file(link: Path, src: Path | None) -> None:
+    """Point a single path at `src`, or remove it when `src` is None.
+
+    Used for targets that are one file rather than a directory of entries,
+    like opencode's global ~/.config/opencode/AGENTS.md.
+    """
+    if src is None or not src.exists():
+        if owned_by_repo(link):
+            link.unlink()
+            Out.say(f"  - {link.name}")
+        return
+
+    src = src.resolve()
+    if link.is_symlink():
+        if Path(os.path.realpath(link)) == src:
+            return
+        if not owned_by_repo(link):
+            Out.warn(f"{link} is a foreign symlink; leaving it alone")
+            return
+        link.unlink()
+    elif link.exists():
+        Out.warn(f"{link} exists and is not a symlink; leaving it alone")
+        return
+
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(src)
+    Out.say(f"  + {link.name}")
+
+
 def link(cfg: Config, built: Path) -> None:
     Out.say(f"linking skills -> {cfg.targets['skills']}")
     relink(
@@ -409,6 +440,12 @@ def link(cfg: Config, built: Path) -> None:
         if plugins_src.is_dir()
         else {},
     )
+
+    # Optional, and a single file rather than a directory: opencode's global
+    # rules live at exactly ~/.config/opencode/AGENTS.md.
+    if "rules" in cfg.targets:
+        Out.say(f"linking rules  -> {cfg.targets['rules']}")
+        link_file(cfg.targets["rules"], REPO / "rules" / "AGENTS.md")
 
 
 # --------------------------------------------------------------------------
@@ -464,6 +501,15 @@ def cmd_status(cfg: Config, _: argparse.Namespace) -> None:
 
     for kind, target in cfg.targets.items():
         print(f"\n{kind} -> {target}")
+        if kind in FILE_TARGETS:
+            if owned_by_repo(target):
+                broken = "" if target.exists() else "  BROKEN"
+                print(f"  {target.name}  <- local{broken}")
+            elif target.exists():
+                print("  (exists, but not linked from this repo)")
+            else:
+                print("  (not linked)")
+            continue
         if not target.is_dir():
             print("  (target directory does not exist)")
             continue
@@ -482,6 +528,13 @@ def cmd_status(cfg: Config, _: argparse.Namespace) -> None:
 def cmd_unlink(cfg: Config, _: argparse.Namespace) -> None:
     total = 0
     for kind, target in cfg.targets.items():
+        if kind in FILE_TARGETS:
+            if owned_by_repo(target):
+                Out.say(f"unlinking {kind} from {target}")
+                target.unlink()
+                total += 1
+                Out.say(f"  - {target.name}")
+            continue
         if not target.is_dir():
             continue
         Out.say(f"unlinking {kind} from {target}")

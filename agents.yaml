@@ -15,7 +15,12 @@ owner: auto
 owner_remote: origin
 
 # Where `./agents sync` installs symlinks. Paths may use ~ and $ENV vars.
+#
+# skills/agents/plugins are directories of entries. `rules` is a single file:
+# opencode reads global rules from exactly ~/.config/opencode/AGENTS.md. It is
+# optional — drop the line to stop managing it.
 targets:
   skills: ~/.config/opencode/skill
   agents: ~/.config/opencode/agent
   plugins: ~/.config/opencode/plugin
+  rules: ~/.config/opencode/AGENTS.md

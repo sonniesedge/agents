@@ -14,6 +14,7 @@ agents.yaml        owner prefix + symlink targets
 skills.yaml        manifest of remote skill sources
 skills.local.yaml  private sources, merged in       (gitignored)
 skills/            skills authored here (unprefixed on disk)
+rules/AGENTS.md    personal, always-on agent rules
 agent/             agent definition files (*.md)
 plugin/            plugin files
 scripts/agents.py  the CLI
@@ -104,6 +105,24 @@ repo can stay public without advertising them.
 | skills  | `~/.config/opencode/skill`    |
 | agents  | `~/.config/opencode/agent`    |
 | plugins | `~/.config/opencode/plugin`   |
+| rules   | `~/.config/opencode/AGENTS.md`|
+
+The first three are directories of entries. `rules` is a single file, because
+[opencode reads global rules](https://opencode.ai/docs/rules/) from exactly
+`~/.config/opencode/AGENTS.md`. It is optional — drop the line to stop
+managing it.
+
+Note that `rules/AGENTS.md` deliberately is *not* this repo's root
+`AGENTS.md`. opencode checks for local rule files before global ones, so a
+root `AGENTS.md` would make your personal rules double as this repo's project
+rules whenever you worked in here. The two stay separate.
+
+For rules too big to keep always-on, reference them lazily from within
+`rules/AGENTS.md` rather than loading everything every session:
+
+```markdown
+For my git conventions: @~/.config/opencode/rules/git.md
+```
 
 ## Requirements
 
