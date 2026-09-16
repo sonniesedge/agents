@@ -8,13 +8,13 @@ matches the directory, per the Agent Skills spec (agentskills.io), and then
 symlinked into the targets declared in agents.yaml.
 
 Usage:
-    ./agents sync            fetch + build + link (the everyday command)
-    ./agents fetch           clone/update remote sources only
-    ./agents build           render .build/ only
-    ./agents link            refresh symlinks only
-    ./agents status          show what is installed and where it came from
-    ./agents list            list every resolvable skill
-    ./agents unlink          remove every symlink this repo owns
+    ./scripts/agents.py sync            fetch + build + link (the everyday command)
+    ./scripts/agents.py fetch           clone/update remote sources only
+    ./scripts/agents.py build           render .build/ only
+    ./scripts/agents.py link            refresh symlinks only
+    ./scripts/agents.py status          show what is installed and where it came from
+    ./scripts/agents.py list            list every resolvable skill
+    ./scripts/agents.py unlink          remove every symlink this repo owns
 """
 
 from __future__ import annotations
@@ -229,7 +229,7 @@ def collect(cfg: Config, *, require_fetch: bool = True) -> list[Skill]:
     for source in cfg.sources:
         if not source.checkout.exists():
             if require_fetch:
-                Out.warn(f"{source.slug} not fetched yet; run `./agents fetch`")
+                Out.warn(f"{source.slug} not fetched yet; run `./scripts/agents.py fetch`")
             continue
         root = source.checkout / source.path if source.path else source.checkout
         if not root.is_dir():
@@ -565,7 +565,7 @@ COMMANDS = {
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="agents",
+        prog="agents.py",
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

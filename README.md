@@ -35,13 +35,13 @@ published at `github.com/sonniesedge/agents` yields `sonniesedge`. Set a
 literal string instead to pin it regardless of remote, and `owner_remote` to
 read something other than `origin`. If `auto` can't resolve, sync stops and
 tells you rather than guessing — a wrong prefix would rename every skill you
-author. `./agents status` always reports which route was taken.
+author. `./scripts/agents.py status` always reports which route was taken.
 
 The spec wants a skill's `name` to match its directory name, so `sync` renders
 each skill into `.build/skills/<owner>-<name>/` with a rewritten `SKILL.md`,
 then symlinks that. Every other file in the skill is symlinked back to its
 source, so scripts and references stay live — only `SKILL.md` edits need a
-re-run of `./agents sync`.
+re-run of `./scripts/agents.py sync`.
 
 Changing the prefix is safe to do: the next sync removes the old symlinks and
 creates the new ones.
@@ -49,12 +49,12 @@ creates the new ones.
 ## Usage
 
 ```sh
-./agents sync             # fetch remotes, rebuild, refresh symlinks
-./agents sync --no-fetch  # rebuild and relink without touching the network
-./agents status           # what is linked, and where it came from
-./agents list             # every resolvable skill
-./agents fetch            # update remote sources only
-./agents unlink           # remove every symlink this repo owns
+./scripts/agents.py sync             # fetch remotes, rebuild, refresh symlinks
+./scripts/agents.py sync --no-fetch  # rebuild and relink without touching the network
+./scripts/agents.py status           # what is linked, and where it came from
+./scripts/agents.py list             # every resolvable skill
+./scripts/agents.py fetch            # update remote sources only
+./scripts/agents.py unlink           # remove every symlink this repo owns
 ```
 
 `sync` is the everyday command and is safe to re-run. It only ever touches
@@ -66,7 +66,7 @@ directories is left alone and reported as a warning.
 ```sh
 mkdir -p skills/my-skill
 $EDITOR skills/my-skill/SKILL.md   # name: my-skill  (unprefixed)
-./agents sync
+./scripts/agents.py sync
 ```
 
 Write the frontmatter `name` unprefixed. The prefix is applied at build time,
@@ -74,7 +74,7 @@ so changing `owner` in `agents.yaml` renames every one of your skills at once.
 
 ## Adding a remote source
 
-Add an entry to `skills.yaml` and run `./agents sync`:
+Add an entry to `skills.yaml` and run `./scripts/agents.py sync`:
 
 ```yaml
 sources:

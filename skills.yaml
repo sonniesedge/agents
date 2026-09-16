@@ -11,7 +11,7 @@
 #   include  (optional) list of fnmatch patterns; only matching skills install
 #   exclude  (optional) list of fnmatch patterns; matching skills are skipped
 #
-# Run `./agents sync` to clone/update every source and refresh symlinks.
+# Run `./scripts/agents.py sync` to clone/update every source and refresh symlinks.
 #
 # Private or work-internal sources belong in skills.local.yaml, which is
 # gitignored and merged with this file. Same format.
