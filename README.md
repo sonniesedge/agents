@@ -126,7 +126,7 @@ Every kind is optional — drop a line to stop managing it. Five are recognised:
 | `skills`  | directory | `.build/skills/` (prefixed)   |
 | `agents`  | directory | `agents/`                     |
 | `plugins` | directory | `plugins/`                    |
-| `rules`   | dir or file | `rules/`                    |
+| `rules`   | directory | `rules/`                      |
 | `config`  | file      | `<tool>/<target's filename>`  |
 
 Anything else is a typo and sync says so, rather than silently linking
@@ -145,9 +145,17 @@ targets:
 Claude Code reads `~/.claude/rules/` natively; opencode must be pointed at its
 rules directory from `opencode.jsonc`. Sync warns if that wiring is missing.
 
-Point `rules` at a path ending in `.md` instead and the themed files are
-concatenated into one generated file, which both tools read with no wiring at
-all. See `rules/README.md`.
+Any target can be written longhand to pass options. `rules` takes `merge`,
+which concatenates the themed files into a single generated `AGENTS.md`
+instead of linking them separately:
+
+```yaml
+rules:
+  path: ~/.config/opencode/rules
+  merge: true
+```
+
+A bare string is shorthand for `path`. See `rules/README.md`.
 
 Retargeting anything is safe: sync records what it linked and removes the old
 location on the next run.
