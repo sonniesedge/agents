@@ -60,19 +60,27 @@ NAME_LINE = re.compile(r"^name:.*$", re.MULTILINE)
 
 class Out:
     quiet = False
+    json = False
+    warnings: list[str] = []
 
     @staticmethod
     def say(msg: str) -> None:
-        if not Out.quiet:
+        if not (Out.quiet or Out.json):
             print(msg)
 
     @staticmethod
     def warn(msg: str) -> None:
-        print(f"warning: {msg}", file=sys.stderr)
+        Out.warnings.append(msg)
+        if not Out.json:
+            print(f"warning: {msg}", file=sys.stderr)
 
     @staticmethod
     def die(msg: str) -> NoReturn:
+        if Out.json:
+            print(json.dumps({"ok": False, "error": msg}, indent=2))
+            sys.exit(1)
         sys.exit(f"error: {msg}")
+
 
 
 # --------------------------------------------------------------------------
@@ -351,12 +359,14 @@ def git(*args: str, cwd: Path | None = None) -> str:
     return result.stdout.strip()
 
 
-def fetch(cfg: Config) -> None:
+def fetch(cfg: Config) -> list[dict]:
+    fetched: list[dict] = []
     if not cfg.sources:
         Out.say("no remote sources declared in config.yaml")
-        return
+        return fetched
     for source in cfg.sources:
         dest = source.checkout
+        action = "updated" if dest.exists() else "cloned"
         try:
             if dest.exists():
                 Out.say(f"updating {source.slug}")
@@ -377,9 +387,27 @@ def fetch(cfg: Config) -> None:
             except RuntimeError:
                 pass
             git("checkout", "--quiet", "--detach", target, cwd=dest)
-            Out.say(f"  {source.slug} @ {git('rev-parse', '--short', 'HEAD', cwd=dest)}")
+            revision = git("rev-parse", "--short", "HEAD", cwd=dest)
+            Out.say(f"  {source.slug} @ {revision}")
+            fetched.append(
+                {
+                    "source": source.slug,
+                    "owner": source.owner,
+                    "action": action,
+                    "revision": revision,
+                }
+            )
         except RuntimeError as exc:
             Out.warn(f"{source.slug}: {exc}")
+            fetched.append(
+                {
+                    "source": source.slug,
+                    "owner": source.owner,
+                    "action": "failed",
+                    "error": str(exc),
+                }
+            )
+    return fetched
 
 
 # --------------------------------------------------------------------------
@@ -435,15 +463,16 @@ def owned_by_repo(link: Path) -> bool:
     return target == REPO or REPO in target.parents
 
 
-def relink(target_dir: Path, wanted: dict[str, Path]) -> tuple[int, int]:
+def relink(target_dir: Path, wanted: dict[str, Path]) -> dict[str, list[str]]:
     """Make target_dir contain exactly `wanted` among repo-owned symlinks."""
     target_dir.mkdir(parents=True, exist_ok=True)
-    created = removed = 0
+    added: list[str] = []
+    removed: list[str] = []
 
     for existing in sorted(target_dir.iterdir()):
         if owned_by_repo(existing) and existing.name not in wanted:
             existing.unlink()
-            removed += 1
+            removed.append(existing.name)
             Out.say(f"  - {existing.name}")
 
     for name, src in sorted(wanted.items()):
@@ -460,13 +489,13 @@ def relink(target_dir: Path, wanted: dict[str, Path]) -> tuple[int, int]:
             Out.warn(f"{link} exists and is not a symlink; leaving it alone")
             continue
         link.symlink_to(src)
-        created += 1
+        added.append(name)
         Out.say(f"  + {name}")
 
-    return created, removed
+    return {"added": added, "removed": removed}
 
 
-def link_file(link: Path, src: Path | None) -> None:
+def link_file(link: Path, src: Path | None) -> dict[str, list[str]]:
     """Point a single path at `src`, or remove it when `src` is None.
 
     Used for targets that are one file rather than a directory of entries,
@@ -476,23 +505,25 @@ def link_file(link: Path, src: Path | None) -> None:
         if owned_by_repo(link):
             link.unlink()
             Out.say(f"  - {link.name}")
-        return
+            return {"added": [], "removed": [link.name]}
+        return {"added": [], "removed": []}
 
     src = src.resolve()
     if link.is_symlink():
         if Path(os.path.realpath(link)) == src:
-            return
+            return {"added": [], "removed": []}
         if not owned_by_repo(link):
             Out.warn(f"{link} is a foreign symlink; leaving it alone")
-            return
+            return {"added": [], "removed": []}
         link.unlink()
     elif link.exists():
         Out.warn(f"{link} exists and is not a symlink; leaving it alone")
-        return
+        return {"added": [], "removed": []}
 
     link.parent.mkdir(parents=True, exist_ok=True)
     link.symlink_to(src)
     Out.say(f"  + {link.name}")
+    return {"added": [link.name], "removed": []}
 
 
 def rule_files() -> list[Path]:
@@ -560,7 +591,7 @@ def file_source(tool: str, kind: str, target: Path) -> Path:
     return REPO / "settings" / tool / target.name
 
 
-def prune_stale_targets(cfg: Config) -> None:
+def prune_stale_targets(cfg: Config) -> list[str]:
     """Clean up targets this repo linked before but no longer declares.
 
     Retargeting — including switching `rules` between a directory and a
@@ -578,41 +609,51 @@ def prune_stale_targets(cfg: Config) -> None:
         except (json.JSONDecodeError, TypeError):
             pass
 
+    pruned: list[str] = []
     for stale in sorted(previous - current):
         path = Path(stale)
         if owned_by_repo(path):
             path.unlink()
+            pruned.append(str(path))
             Out.say(f"  - {path} (no longer a target)")
         elif path.is_dir():
             for entry in sorted(path.iterdir()):
                 if owned_by_repo(entry):
                     entry.unlink()
+                    pruned.append(str(entry))
                     Out.say(f"  - {entry} (no longer a target)")
             if not any(path.iterdir()):
                 path.rmdir()
 
     record.parent.mkdir(parents=True, exist_ok=True)
     record.write_text(json.dumps(sorted(current), indent=2) + "\n")
+    return pruned
 
 
-def link(cfg: Config, built: Path) -> None:
-    prune_stale_targets(cfg)
+def link(cfg: Config, built: Path) -> dict:
+    result: dict = {"pruned": prune_stale_targets(cfg), "targets": []}
     for tool, kinds in cfg.targets.items():
         for kind, target in kinds.items():
             Out.say(f"linking {tool}.{kind} -> {target.path}")
             if kind == "rules" and target.merge:
                 merged = render_rules()
                 if target.is_file:
-                    link_file(target.path, merged)
+                    changed = link_file(target.path, merged)
                 else:
                     # Through relink, so any per-file symlinks left by a
                     # previous merge: false are cleared from the directory.
-                    relink(target.path, {MERGED_RULES: merged} if merged else {})
+                    changed = relink(
+                        target.path, {MERGED_RULES: merged} if merged else {}
+                    )
             elif kind in FILE_KINDS:
-                link_file(target.path, file_source(tool, kind, target.path))
+                changed = link_file(target.path, file_source(tool, kind, target.path))
             else:
-                relink(target.path, dir_entries(kind, built))
+                changed = relink(target.path, dir_entries(kind, built))
+            result["targets"].append(
+                {"tool": tool, "kind": kind, "path": str(target.path), **changed}
+            )
         check_rules_wiring(tool, kinds)
+    return result
 
 
 # Tools that do not read a rules directory on their own and need to be
@@ -667,84 +708,152 @@ def check_rules_wiring(tool: str, kinds: dict[str, Target]) -> None:
 # commands
 
 
-def cmd_fetch(cfg: Config, _: argparse.Namespace) -> None:
-    fetch(cfg)
+def cmd_fetch(cfg: Config, _: argparse.Namespace) -> dict:
+    return {"fetched": fetch(cfg)}
 
 
-def cmd_build(cfg: Config, _: argparse.Namespace) -> None:
-    build(cfg, collect(cfg))
+def cmd_build(cfg: Config, _: argparse.Namespace) -> dict:
+    skills = collect(cfg)
+    build(cfg, skills)
+    return {"built": [s.full for s in skills]}
 
 
-def cmd_link(cfg: Config, _: argparse.Namespace) -> None:
+def cmd_link(cfg: Config, _: argparse.Namespace) -> dict:
     built = BUILD / "skills"
     if not built.is_dir():
         built = build(cfg, collect(cfg))
-    link(cfg, built)
+    return link(cfg, built)
 
 
-def cmd_sync(cfg: Config, args: argparse.Namespace) -> None:
-    if not args.no_fetch:
-        fetch(cfg)
-    link(cfg, build(cfg, collect(cfg)))
+def cmd_sync(cfg: Config, args: argparse.Namespace) -> dict:
+    result: dict = {"fetched": [] if args.no_fetch else fetch(cfg)}
+    skills = collect(cfg)
+    result["built"] = [s.full for s in skills]
+    result.update(link(cfg, build(cfg, skills)))
     Out.say("sync complete")
+    return result
 
 
-def cmd_list(cfg: Config, _: argparse.Namespace) -> None:
+def cmd_list(cfg: Config, _: argparse.Namespace) -> dict:
     skills = collect(cfg, require_fetch=False)
     if not skills:
         Out.say("no skills found")
-        return
-    width = max(len(s.full) for s in skills)
-    for skill in skills:
-        print(f"{skill.full:<{width}}  {skill.origin}")
+    elif not Out.json:
+        width = max(len(s.full) for s in skills)
+        for skill in skills:
+            print(f"{skill.full:<{width}}  {skill.origin}")
+    return {
+        "skills": [
+            {
+                "name": s.full,
+                "skill": s.name,
+                "owner": s.owner,
+                "origin": s.origin,
+                "path": str(s.src),
+            }
+            for s in skills
+        ]
+    }
 
 
-def cmd_status(cfg: Config, _: argparse.Namespace) -> None:
+def target_state(
+    kind: str, target: Target, skills: dict[str, Skill]
+) -> tuple[str, list[dict]]:
+    """What is currently installed at one target, and whether that is sound."""
+    path = target.path
+    if kind in FILE_KINDS or target.is_file:
+        if owned_by_repo(path):
+            return "linked", [
+                {"name": path.name, "origin": "local", "broken": not path.exists()}
+            ]
+        return ("foreign" if path.exists() else "absent"), []
+
+    if not path.is_dir():
+        return "absent", []
+
+    entries = []
+    for entry in sorted(path.iterdir()):
+        if not owned_by_repo(entry):
+            continue
+        origin = None
+        if kind == "skills":
+            skill = skills.get(entry.name)
+            origin = skill.origin if skill else "STALE"
+        entries.append(
+            {"name": entry.name, "origin": origin, "broken": not entry.exists()}
+        )
+    return ("linked" if entries else "empty"), entries
+
+
+def cmd_status(cfg: Config, _: argparse.Namespace) -> dict:
     skills = {s.full: s for s in collect(cfg, require_fetch=False)}
-    print(f"repo   {REPO}")
-    print(f"owner  {cfg.owner}  ({cfg.owner_from})")
 
+    sources = []
     for source in cfg.sources:
+        revision = None
         if source.checkout.exists():
             try:
-                rev = git("rev-parse", "--short", "HEAD", cwd=source.checkout)
+                revision = git("rev-parse", "--short", "HEAD", cwd=source.checkout)
             except RuntimeError:
-                rev = "?"
-            print(f"source {source.slug} @ {rev} (owner: {source.owner})")
-        else:
-            print(f"source {source.slug} NOT FETCHED (owner: {source.owner})")
+                revision = "?"
+        sources.append(
+            {
+                "source": source.slug,
+                "owner": source.owner,
+                "fetched": source.checkout.exists(),
+                "revision": revision,
+            }
+        )
 
+    targets = []
     for tool, kinds in cfg.targets.items():
         for kind, target in kinds.items():
-            note = "  (merged)" if kind == "rules" and target.merge else ""
-            print(f"\n{tool}.{kind} -> {target.path}{note}")
-            path = target.path
-            if kind in FILE_KINDS or target.is_file:
-                if owned_by_repo(path):
-                    broken = "" if path.exists() else "  BROKEN"
-                    print(f"  {path.name}  <- local{broken}")
-                elif path.exists():
-                    print("  (exists, but not linked from this repo)")
-                else:
-                    print("  (not linked)")
-                continue
-            if not path.is_dir():
-                print("  (target directory does not exist)")
-                continue
-            managed = [e for e in sorted(path.iterdir()) if owned_by_repo(e)]
-            if not managed:
-                print("  (nothing linked from this repo)")
-            for entry in managed:
-                note = ""
-                if kind == "skills":
-                    skill = skills.get(entry.name)
-                    note = f"  <- {skill.origin}" if skill else "  <- STALE"
-                broken = "" if entry.exists() else "  BROKEN"
-                print(f"  {entry.name}{note}{broken}")
+            state, entries = target_state(kind, target, skills)
+            targets.append(
+                {
+                    "tool": tool,
+                    "kind": kind,
+                    "path": str(target.path),
+                    "merge": target.merge if kind == "rules" else None,
+                    "state": state,
+                    "entries": entries,
+                }
+            )
+
+    result = {
+        "repo": str(REPO),
+        "owner": cfg.owner,
+        "owner_from": cfg.owner_from,
+        "sources": sources,
+        "targets": targets,
+    }
+    if Out.json:
+        return result
+
+    print(f"repo   {REPO}")
+    print(f"owner  {cfg.owner}  ({cfg.owner_from})")
+    for item in sources:
+        where = f"@ {item['revision']}" if item["fetched"] else "NOT FETCHED"
+        print(f"source {item['source']} {where} (owner: {item['owner']})")
+
+    for item in targets:
+        note = "  (merged)" if item["merge"] else ""
+        print(f"\n{item['tool']}.{item['kind']} -> {item['path']}{note}")
+        if item["state"] == "absent":
+            print("  (not linked)")
+        elif item["state"] == "foreign":
+            print("  (exists, but not linked from this repo)")
+        elif item["state"] == "empty":
+            print("  (nothing linked from this repo)")
+        for entry in item["entries"]:
+            origin = f"  <- {entry['origin']}" if entry["origin"] else ""
+            broken = "  BROKEN" if entry["broken"] else ""
+            print(f"  {entry['name']}{origin}{broken}")
+    return result
 
 
-def cmd_unlink(cfg: Config, _: argparse.Namespace) -> None:
-    total = 0
+def cmd_unlink(cfg: Config, _: argparse.Namespace) -> dict:
+    removed: list[str] = []
     for tool, kinds in cfg.targets.items():
         for kind, target in kinds.items():
             path = target.path
@@ -752,7 +861,7 @@ def cmd_unlink(cfg: Config, _: argparse.Namespace) -> None:
                 if owned_by_repo(path):
                     Out.say(f"unlinking {tool}.{kind} from {path}")
                     path.unlink()
-                    total += 1
+                    removed.append(str(path))
                     Out.say(f"  - {path.name}")
                 continue
             if not path.is_dir():
@@ -761,9 +870,10 @@ def cmd_unlink(cfg: Config, _: argparse.Namespace) -> None:
             for entry in sorted(path.iterdir()):
                 if owned_by_repo(entry):
                     entry.unlink()
-                    total += 1
+                    removed.append(str(entry))
                     Out.say(f"  - {entry.name}")
-    Out.say(f"removed {total} symlink(s)")
+    Out.say(f"removed {len(removed)} symlink(s)")
+    return {"removed": removed}
 
 
 COMMANDS = {
@@ -801,6 +911,11 @@ def main() -> None:
     parser.add_argument(
         "-q", "--quiet", action="store_true", help="only print warnings and errors"
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print the result as JSON instead of text",
+    )
     # So every command can read it, not just the one that defines the flag.
     parser.set_defaults(no_fetch=False)
 
@@ -816,10 +931,14 @@ def main() -> None:
 
     args = parser.parse_args()
     Out.quiet = args.quiet
+    Out.json = args.json
 
     # No command: point at sync rather than running it. sync reaches the
     # network and rewrites symlinks, so it should be asked for.
     if not args.command:
+        if args.json:
+            print(json.dumps({"ok": False, "error": "no command given"}, indent=2))
+            sys.exit(1)
         parser.print_help()
         print(
             "\nMost of the time you want:\n"
@@ -828,7 +947,18 @@ def main() -> None:
         )
         return
 
-    COMMANDS[args.command](load_config(), args)
+    result = COMMANDS[args.command](load_config(), args)
+    if args.json:
+        # Warnings go into the document rather than stderr, so a single
+        # parse sees everything that happened.
+        print(
+            json.dumps(
+                {"ok": True, "command": args.command, **result,
+                 "warnings": Out.warnings},
+                indent=2,
+            )
+        )
+
 
 
 

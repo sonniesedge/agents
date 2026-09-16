@@ -73,6 +73,32 @@ It is not the default, though: run with no command and you get the list
 above. `sync` reaches the network and rewrites symlinks, so it is worth
 asking for rather than getting by accident.
 
+### JSON output
+
+`--json` works with any command, for scripting or for an agent reading the
+result:
+
+```sh
+./scripts/agents.py --json status | jq '.targets[] | select(.state != "linked")'
+./scripts/agents.py --json sync   | jq '.targets[].added'
+./scripts/agents.py --json list   | jq -r '.skills[] | "\(.name)\t\(.origin)"'
+```
+
+Every document has `ok`, `command`, and `warnings`; each command adds its own
+keys — `skills`, `sources`/`targets`, `fetched`, `built`, `added`/`removed`,
+`pruned`.
+
+Warnings go into the document rather than to stderr, so one parse sees
+everything that happened. Failures are JSON too, with `ok: false` and an
+`error`, exiting non-zero:
+
+```json
+{
+  "ok": false,
+  "error": "config.yaml: `opencode.skillz` is not a recognised target. ..."
+}
+```
+
 ## Adding a skill of your own
 
 ```sh
