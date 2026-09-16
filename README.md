@@ -1,16 +1,23 @@
 # Agents
 
-User-scoped agent skills, agent files, and plugins — version controlled in one
+User-scoped agent skills, agent files, and plugins for your agent harness. All version controlled in one
 place and symlinked into the tools that consume them.
 
-Skills follow the [Agent Skills](https://agentskills.io) standard: a folder
-containing a `SKILL.md` with `name` and `description` frontmatter, plus any
-scripts, references, or assets it needs.
+Focussed on [opencode](https://opencode.ai/) for now, but flexible enough to be expanded to other agent harnesses.
 
-## Types
+## Quick start
 
-Four kinds of artefact, one directory each. Every directory carries its own
-`README.md` with the detail, and is symlinked out as-is.
+To symlink the skills, rules, plugins, and agents into your config:
+
+```sh
+./agents.py sync 
+```
+
+Once you've made changes to your own resources or manifest you can run it again to link everything up.
+
+## Resource Types
+
+Four kinds of resources, one directory each. Every directory is symlinked out as-is.
 
 ### Skills
 
@@ -62,7 +69,7 @@ creates the new ones.
 
 ## Adding skills
 
-### Your own
+### Your own skills
 
 ```sh
 mkdir -p skills/my-skill
@@ -73,7 +80,7 @@ $EDITOR skills/my-skill/SKILL.md
 Write the frontmatter `name` unprefixed. The prefix is applied at build time,
 so changing `owner` in `config.yaml` renames every one of your skills at once.
 
-### Remote sources
+### Remote skills
 
 Add an entry to `sources` in `config.yaml` and run sync:
 
