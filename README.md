@@ -10,9 +10,8 @@ scripts, references, or assets it needs.
 ## Layout
 
 ```
-agents.yaml        owner prefix + symlink targets
-skills.yaml        manifest of remote skill sources
-skills.local.yaml  private sources, merged in       (gitignored)
+config.yaml        owner, symlink targets, remote sources
+config.local.yaml  private settings, layered on top  (gitignored)
 skills/            skills authored here (unprefixed on disk)
 rules/AGENTS.md    personal, always-on agent rules
 config/            opencode.jsonc                   (gitignored)
@@ -27,7 +26,7 @@ scripts/agents.py  the CLI
 
 Every installed skill is prefixed by whoever authored it:
 
-- skills in `skills/` get the `owner` from `agents.yaml` → `sonniesedge-chezmoi`
+- skills in `skills/` get the `owner` from `config.yaml` → `sonniesedge-chezmoi`
 - skills from a remote get that source's `owner` → `mattpocock-tdd`
 
 `owner: auto` derives the prefix from this repo's own git remote, so a repo
@@ -70,11 +69,11 @@ $EDITOR skills/my-skill/SKILL.md   # name: my-skill  (unprefixed)
 ```
 
 Write the frontmatter `name` unprefixed. The prefix is applied at build time,
-so changing `owner` in `agents.yaml` renames every one of your skills at once.
+so changing `owner` in `config.yaml` renames every one of your skills at once.
 
 ## Adding a remote source
 
-Add an entry to `skills.yaml` and run `./scripts/agents.py sync`:
+Add an entry to `sources` in `config.yaml` and run `./scripts/agents.py sync`:
 
 ```yaml
 sources:
@@ -93,13 +92,14 @@ sync.
 
 ### Private sources
 
-`skills.local.yaml` uses the same format, is gitignored, and is merged with
-`skills.yaml` at sync time. Put work-internal or private sources there so this
-repo can stay public without advertising them.
+`config.local.yaml` is gitignored and layered on top of `config.yaml`: its
+`sources` are appended, and any other key it sets overrides. Put work-internal
+or private settings there so this repo can stay public without advertising
+them.
 
 ## Targets
 
-`agents.yaml` decides where things land. By default:
+`config.yaml` decides where things land. By default:
 
 | what    | target                            |
 | ------- | --------------------------------- |

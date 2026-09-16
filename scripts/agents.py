@@ -2,10 +2,10 @@
 """Manage user-scoped agent skills, agent files, and plugins.
 
 Locally-authored skills live unprefixed under skills/. Remote skills are
-cloned into .vendor/ from the sources declared in skills.yaml. Both are
+cloned into .vendor/ from the sources declared in config.yaml. Both are
 rendered into .build/skills/<owner>-<name>/ with a frontmatter `name` that
 matches the directory, per the Agent Skills spec (agentskills.io), and then
-symlinked into the targets declared in agents.yaml.
+symlinked into the targets declared in config.yaml.
 
 Usage:
     ./scripts/agents.py sync            fetch + build + link (the everyday command)
@@ -135,7 +135,7 @@ def derive_owner(remote: str) -> tuple[str, str]:
     because guessing here would rename every skill you author.
     """
     hint = (
-        f"Set `owner:` explicitly in agents.yaml, or add the remote:\n"
+        f"Set `owner:` explicitly in config.yaml, or add the remote:\n"
         f"    git remote add {remote} git@github.com:<org>/<repo>.git"
     )
     try:
@@ -149,36 +149,51 @@ def derive_owner(remote: str) -> tuple[str, str]:
     return parts[-2], f"auto, from {remote} ({url})"
 
 
+CONFIG_FILE = "config.yaml"
+LOCAL_CONFIG_FILE = "config.local.yaml"
+RETIRED = ("agents.yaml", "skills.yaml", "skills.local.yaml")
+
+
 def load_config() -> Config:
-    agents_file = REPO / "agents.yaml"
-    if not agents_file.exists():
-        Out.die(f"missing {agents_file}")
-    data = yaml.safe_load(agents_file.read_text()) or {}
+    main = REPO / CONFIG_FILE
+    if not main.exists():
+        stale = [f for f in RETIRED if (REPO / f).exists()]
+        hint = (
+            f"\nFound {', '.join(stale)}: these merged into {CONFIG_FILE}."
+            if stale
+            else ""
+        )
+        Out.die(f"missing {main}{hint}")
+
+    # config.local.yaml is gitignored: somewhere to keep private or
+    # work-internal settings without publishing them. Scalar keys override,
+    # `sources` accumulate.
+    layers: list[tuple[str, dict]] = []
+    for path in (main, REPO / LOCAL_CONFIG_FILE):
+        if path.exists():
+            layers.append((path.name, yaml.safe_load(path.read_text()) or {}))
+
+    data: dict = {}
+    for _, layer in layers:
+        data.update(layer)
 
     raw_owner = data.get("owner")
     if raw_owner is None or str(raw_owner).strip().lower() in ("auto", ""):
         owner, owner_from = derive_owner(str(data.get("owner_remote") or "origin"))
     else:
-        owner, owner_from = str(raw_owner).strip(), "agents.yaml"
+        owner, owner_from = str(raw_owner).strip(), CONFIG_FILE
 
     targets = {k: expand(v) for k, v in (data.get("targets") or {}).items()}
     for key in ("skills", "agents", "plugins"):
         if key not in targets:
-            Out.die(f"agents.yaml targets must include `{key}`")
+            Out.die(f"{CONFIG_FILE} targets must include `{key}`")
 
     sources = []
-    # skills.local.yaml is gitignored: somewhere to declare private or
-    # work-internal sources without publishing their existence.
-    for manifest in (REPO / "skills.yaml", REPO / "skills.local.yaml"):
-        if not manifest.exists():
-            continue
-        entries = (yaml.safe_load(manifest.read_text()) or {}).get("sources") or []
-        for i, entry in enumerate(entries):
+    for name, layer in layers:
+        for i, entry in enumerate(layer.get("sources") or []):
             src_owner, src_repo = entry.get("owner"), entry.get("repo")
             if not src_owner or not src_repo:
-                Out.die(
-                    f"{manifest.name} source #{i + 1} needs both `owner` and `repo`"
-                )
+                Out.die(f"{name} source #{i + 1} needs both `owner` and `repo`")
             sources.append(
                 Source(
                     owner=str(src_owner),
@@ -266,7 +281,7 @@ def git(*args: str, cwd: Path | None = None) -> str:
 
 def fetch(cfg: Config) -> None:
     if not cfg.sources:
-        Out.say("no remote sources declared in skills.yaml")
+        Out.say("no remote sources declared in config.yaml")
         return
     for source in cfg.sources:
         dest = source.checkout

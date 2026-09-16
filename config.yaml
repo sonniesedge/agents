@@ -1,0 +1,54 @@
+# config.yaml — repo-wide configuration.
+#
+# Controls who "owns" the locally-authored skills, where artefacts get
+# symlinked, and which remote repos to pull skills from.
+#
+# Private or work-internal settings belong in config.local.yaml, which is
+# gitignored. Same format: its `sources` are appended to the list below, and
+# any other key it sets overrides the value here.
+
+# Prefix applied to every skill authored in this repo. Skills are stored
+# unprefixed under skills/ and rendered as "<owner>-<skill>" at sync time.
+#
+# Set `auto` to derive the prefix from this repo's own git remote, so a repo
+# published at github.com/sonniesedge/agents yields the prefix "sonniesedge".
+# Set a literal string to pin it regardless of remote.
+owner: auto
+
+# Which remote `owner: auto` reads. Only used when owner is `auto`.
+owner_remote: origin
+
+# Where `./scripts/agents.py sync` installs symlinks. Paths may use ~ and
+# $ENV vars.
+#
+# skills/agents/plugins are directories of entries. `rules` and `config` are
+# single files, and both are optional — drop the line to stop managing one.
+targets:
+  skills: ~/.config/opencode/skill
+  agents: ~/.config/opencode/agent
+  plugins: ~/.config/opencode/plugin
+  rules: ~/.config/opencode/AGENTS.md
+  config: ~/.config/opencode/opencode.jsonc
+
+# Remote skill sources. Each is a git repo cloned into .vendor/ and scanned
+# for SKILL.md files. Every skill found installs as "<owner>-<skill-name>".
+#
+# Fields:
+#   owner    (required) prefix applied to skills from this source
+#   repo     (required) git URL, or "org/name" shorthand for GitHub
+#   ref      (optional) branch, tag, or commit. Default: the repo's HEAD
+#   path     (optional) subdirectory to scan. Default: repo root
+#   include  (optional) list of fnmatch patterns; only matching skills install
+#   exclude  (optional) list of fnmatch patterns; matching skills are skipped
+sources:
+  - owner: mattpocock
+    repo: mattpocock/skills
+    ref: main
+    path: skills
+
+  - owner: vercel-labs
+    repo: vercel-labs/skills
+    ref: main
+    path: skills
+    include:
+      - find-skills
