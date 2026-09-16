@@ -445,11 +445,16 @@ def dir_entries(kind: str, built: Path) -> dict[str, Path]:
     if kind == "skills":
         return {d.name: d for d in sorted(built.iterdir()) if d.is_dir()}
 
-    src = REPO / {"agents": "agent", "plugins": "plugin"}[kind]
+    src = REPO / {"agents": "agents", "plugins": "plugin"}[kind]
     if not src.is_dir():
         return {}
     entries = sorted(src.glob("*.md")) if kind == "agents" else sorted(src.iterdir())
-    return {f.name: f for f in entries if not f.name.startswith(".")}
+    # README.md documents the directory; it is not an artefact to link out.
+    return {
+        f.name: f
+        for f in entries
+        if not f.name.startswith(".") and f.name != "README.md"
+    }
 
 
 def file_source(tool: str, kind: str, target: Path) -> Path:

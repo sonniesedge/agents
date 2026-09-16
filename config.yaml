@@ -23,7 +23,7 @@ owner_remote: origin
 #
 # Recognised kinds within a tool, all optional:
 #   skills   directory  <- .build/skills/   (rendered, prefixed)
-#   agents   directory  <- agent/
+#   agents   directory  <- agents/
 #   plugins  directory  <- plugin/
 #   rules    file       <- rules/AGENTS.md
 #   config   file       <- <tool>/<the target's filename>

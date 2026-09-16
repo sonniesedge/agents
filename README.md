@@ -12,18 +12,24 @@ scripts, references, or assets it needs.
 ```
 config.yaml        owner, symlink targets, remote sources
 config.local.yaml  private settings, layered on top  (gitignored)
-skills/            skills authored here (unprefixed on disk)
-rules/AGENTS.md    personal, always-on agent rules
+skills/            skills you author          -> installed with your prefix
+agents/            agent definitions          -> named agents to delegate to
+rules/             AGENTS.md                  -> instructions, always loaded
+plugin/            opencode plugins
 opencode/          opencode.jsonc                    (gitignored)
-agent/             agent definition files (*.md)
-plugin/            plugin files
 scripts/agents.py  the CLI
 .vendor/           cloned remote repos               (gitignored)
 .build/            rendered, prefixed skills         (gitignored)
 ```
 
 The two `config*.yaml` files at the root configure this repo. Every directory
-is named for the artefact it holds and is symlinked out as-is.
+is named for the artefact it holds, is symlinked out as-is, and carries its
+own `README.md` explaining it.
+
+`agents/` and `rules/` are the easy pair to confuse. `agents/` defines named
+agents you choose between; `rules/` holds instructions that apply to all of
+them. The file in `rules/` is called `AGENTS.md` only because that is the
+name opencode reads global rules from.
 
 ## Naming
 
@@ -119,7 +125,7 @@ Every kind is optional — drop a line to stop managing it. Five are recognised:
 | kind      | shape     | source                        |
 | --------- | --------- | ----------------------------- |
 | `skills`  | directory | `.build/skills/` (prefixed)   |
-| `agents`  | directory | `agent/`                      |
+| `agents`  | directory | `agents/`                     |
 | `plugins` | directory | `plugin/`                     |
 | `rules`   | file      | `rules/AGENTS.md`             |
 | `config`  | file      | `<tool>/<target's filename>`  |
