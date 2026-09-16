@@ -466,7 +466,7 @@ def link(cfg: Config, built: Path) -> None:
     # to name internal hosts and services.
     if "config" in cfg.targets:
         Out.say(f"linking config -> {cfg.targets['config']}")
-        link_file(cfg.targets["config"], REPO / "config" / "opencode.jsonc")
+        link_file(cfg.targets["config"], REPO / "opencode" / "opencode.jsonc")
 
 
 # --------------------------------------------------------------------------

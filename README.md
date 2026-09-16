@@ -14,13 +14,16 @@ config.yaml        owner, symlink targets, remote sources
 config.local.yaml  private settings, layered on top  (gitignored)
 skills/            skills authored here (unprefixed on disk)
 rules/AGENTS.md    personal, always-on agent rules
-config/            opencode.jsonc                   (gitignored)
+opencode/          opencode.jsonc                    (gitignored)
 agent/             agent definition files (*.md)
 plugin/            plugin files
 scripts/agents.py  the CLI
-.vendor/           cloned remote repos              (gitignored)
-.build/            rendered, prefixed skills        (gitignored)
+.vendor/           cloned remote repos               (gitignored)
+.build/            rendered, prefixed skills         (gitignored)
 ```
+
+The two `config*.yaml` files at the root configure this repo. Every directory
+is named for the artefact it holds and is symlinked out as-is.
 
 ## Naming
 
@@ -116,7 +119,7 @@ files, and both are optional — drop the line to stop managing one.
 rules](https://opencode.ai/docs/rules/) from exactly
 `~/.config/opencode/AGENTS.md`.
 
-`config/opencode.jsonc` is gitignored: a personal opencode config tends to
+`opencode/opencode.jsonc` is gitignored: a personal opencode config tends to
 name internal hosts, services, and providers. The repo owns the symlink; the
 content stays local.
 

@@ -2,7 +2,7 @@
 /config.local.yaml
 
 # Personal opencode config: names internal hosts and services
-/config/opencode.jsonc
+/opencode/opencode.jsonc
 
 # Cloned remote skill repos
 /.vendor/
