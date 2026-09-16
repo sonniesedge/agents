@@ -1,0 +1,3 @@
+# Git
+
+Use conventional commits.

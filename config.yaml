@@ -25,12 +25,16 @@ owner_remote: origin
 #   skills   directory  <- .build/skills/   (rendered, prefixed)
 #   agents   directory  <- agents/
 #   plugins  directory  <- plugins/
-#   rules    directory  <- rules/
+#   rules    directory  <- rules/   (one symlink per themed file)
+#            or file    <- rules/   (concatenated into one generated file)
 #   config   file       <- settings/<tool>/<the target's filename>
 #
-# `rules` is a flat directory of themed *.md files. Claude Code reads
-# ~/.claude/rules/ natively; opencode needs its config to glob the directory,
-# which sync checks for. Keep it flat: opencode's glob is basename-only.
+# `rules` holds flat, themed *.md files and accepts either shape. Point it at
+# a directory and each file is linked separately: Claude Code reads
+# ~/.claude/rules/ natively, opencode needs its config to glob it, which sync
+# checks for. Point it at a path ending in .md and the files are concatenated
+# into one generated file instead, which both tools read without any wiring.
+# Keep rules/ flat either way: opencode's glob is basename-only.
 targets:
   opencode:
     skills: ~/.config/opencode/skill

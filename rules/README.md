@@ -3,7 +3,12 @@
 Personal instructions, loaded into **every** session. One file per theme —
 `git.md`, `testing.md`, `token-budget.md` — rather than one long file.
 
-Linked as a directory:
+## Two ways to ship them
+
+The `rules` target takes either shape, decided by whether the path ends
+in `.md`.
+
+**As a directory**, each themed file is linked separately:
 
 ```yaml
 targets:
@@ -13,7 +18,36 @@ targets:
     rules: ~/.claude/rules
 ```
 
-Both tools read a rules directory, so the same files serve both.
+**As a file**, they are concatenated into one generated file:
+
+```yaml
+targets:
+  opencode:
+    rules: ~/.config/opencode/AGENTS.md
+  claude:
+    rules: ~/.claude/CLAUDE.md
+```
+
+Either way you author the same themed files here; only the delivery differs.
+
+| | directory | concatenated file |
+| --- | --- | --- |
+| opencode wiring | needs an `instructions` glob | none, read natively |
+| edits | live | need a `sync` |
+| per-file `paths:` scoping | works in Claude Code | lost, all one file |
+| context cost | identical | identical |
+
+Prefer the directory. Reach for the file when a tool reads only a single
+rules file, or when you want one artefact with no config behind it.
+
+Concatenation order is by filename, so numeric prefixes (`10-git.md`,
+`20-testing.md`) control it. Each section is labelled with its source in an
+HTML comment; Claude Code strips those before loading, so they cost nothing
+there.
+
+Switching between the two is safe — sync removes what it previously linked at
+the old location. That matters here: leaving a stale rules directory behind
+while the `instructions` glob still pointed at it would load every rule twice.
 
 ## opencode needs wiring, Claude Code does not
 
