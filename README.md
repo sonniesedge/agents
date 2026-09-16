@@ -49,13 +49,13 @@ published at `github.com/sonniesedge/agents` yields `sonniesedge`. Set a
 literal string instead to pin it regardless of remote, and `owner_remote` to
 read something other than `origin`. If `auto` can't resolve, sync stops and
 tells you rather than guessing — a wrong prefix would rename every skill you
-author. `./scripts/agents.py status` always reports which route was taken.
+author. `./agents.py status` always reports which route was taken.
 
 The spec wants a skill's `name` to match its directory name, so `sync` renders
 each skill into `.build/skills/<owner>-<name>/` with a rewritten `SKILL.md`,
 then symlinks that. Every other file in the skill is symlinked back to its
 source, so scripts and references stay live — only `SKILL.md` edits need a
-re-run of `./scripts/agents.py sync`.
+re-run of `./agents.py sync`.
 
 Changing the prefix is safe to do: the next sync removes the old symlinks and
 creates the new ones.
@@ -67,7 +67,7 @@ creates the new ones.
 ```sh
 mkdir -p skills/my-skill
 $EDITOR skills/my-skill/SKILL.md
-./scripts/agents.py sync
+./agents.py sync
 ```
 
 Write the frontmatter `name` unprefixed. The prefix is applied at build time,
@@ -123,13 +123,13 @@ them.
 ## Usage
 
 ```sh
-./scripts/agents.py                  # list the available commands
-./scripts/agents.py sync             # fetch remotes, rebuild, refresh symlinks
-./scripts/agents.py sync --no-fetch  # rebuild and relink without touching the network
-./scripts/agents.py status           # what is linked, and where it came from
-./scripts/agents.py list             # every resolvable skill
-./scripts/agents.py fetch            # update remote sources only
-./scripts/agents.py unlink           # remove every symlink this repo owns
+./agents.py                  # list the available commands
+./agents.py sync             # fetch remotes, rebuild, refresh symlinks
+./agents.py sync --no-fetch  # rebuild and relink without touching the network
+./agents.py status           # what is linked, and where it came from
+./agents.py list             # every resolvable skill
+./agents.py fetch            # update remote sources only
+./agents.py unlink           # remove every symlink this repo owns
 ```
 
 `sync` is the everyday command and is safe to re-run. It only ever touches
@@ -145,7 +145,7 @@ asking for rather than getting by accident.
 `--json` works with any command, for programmatic usage:
 
 ```sh
-./scripts/agents.py status --json | jq '.targets[] | select(.state != "linked")'
+./agents.py status --json | jq '.targets[] | select(.state != "linked")'
 ```
 
 Warnings go into the document rather than to stderr, and failures are JSON

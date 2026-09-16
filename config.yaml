@@ -18,7 +18,7 @@ owner: auto
 # Which remote `owner: auto` reads. Only used when owner is `auto`.
 owner_remote: origin
 
-# Where `./scripts/agents.py sync` installs symlinks, grouped by tool. Paths
+# Where `./agents.py sync` installs symlinks, grouped by tool. Paths
 # may use ~ and $ENV vars.
 #
 # Recognised kinds within a tool, all optional:

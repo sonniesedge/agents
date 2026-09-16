@@ -53,7 +53,7 @@ data exposure. Report findings by severity.
 
 ```sh
 $EDITOR agents/security-reviewer.md
-./scripts/agents.py sync
+./agents.py sync
 ```
 
 Filenames are used as-is — unlike skills, no owner prefix is applied.

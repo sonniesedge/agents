@@ -42,7 +42,7 @@ scripts and references stay live — only `SKILL.md` edits need a re-sync.
 ```sh
 mkdir -p skills/my-skill
 $EDITOR skills/my-skill/SKILL.md
-./scripts/agents.py sync
+./agents.py sync
 ```
 
 Any directory containing a `SKILL.md` is found, including nested ones, so
