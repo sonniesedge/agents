@@ -15,7 +15,7 @@ config.local.yaml  private settings, layered on top  (gitignored)
 skills/            skills you author          -> installed with your prefix
 agents/            agent definitions          -> named agents to delegate to
 rules/             AGENTS.md                  -> instructions, always loaded
-plugin/            opencode plugins
+plugins/           opencode plugins
 opencode/          opencode.jsonc                    (gitignored)
 scripts/agents.py  the CLI
 .vendor/           cloned remote repos               (gitignored)
@@ -126,7 +126,7 @@ Every kind is optional — drop a line to stop managing it. Five are recognised:
 | --------- | --------- | ----------------------------- |
 | `skills`  | directory | `.build/skills/` (prefixed)   |
 | `agents`  | directory | `agents/`                     |
-| `plugins` | directory | `plugin/`                     |
+| `plugins` | directory | `plugins/`                    |
 | `rules`   | file      | `rules/AGENTS.md`             |
 | `config`  | file      | `<tool>/<target's filename>`  |
 

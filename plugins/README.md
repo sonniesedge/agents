@@ -1,4 +1,4 @@
-# plugin/
+# plugins/
 
 opencode plugins: JavaScript or TypeScript files that hook into opencode's
 runtime to add tools, intercept events, or change behaviour.

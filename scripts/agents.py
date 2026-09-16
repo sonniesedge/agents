@@ -445,7 +445,8 @@ def dir_entries(kind: str, built: Path) -> dict[str, Path]:
     if kind == "skills":
         return {d.name: d for d in sorted(built.iterdir()) if d.is_dir()}
 
-    src = REPO / {"agents": "agents", "plugins": "plugin"}[kind]
+    # agents/ and plugins/ are named for their kind.
+    src = REPO / kind
     if not src.is_dir():
         return {}
     entries = sorted(src.glob("*.md")) if kind == "agents" else sorted(src.iterdir())
