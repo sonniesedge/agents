@@ -56,6 +56,7 @@ creates the new ones.
 ## Usage
 
 ```sh
+./scripts/agents.py                  # list the available commands
 ./scripts/agents.py sync             # fetch remotes, rebuild, refresh symlinks
 ./scripts/agents.py sync --no-fetch  # rebuild and relink without touching the network
 ./scripts/agents.py status           # what is linked, and where it came from
@@ -67,6 +68,10 @@ creates the new ones.
 `sync` is the everyday command and is safe to re-run. It only ever touches
 symlinks that point back into this repo — anything else in the target
 directories is left alone and reported as a warning.
+
+It is not the default, though: run with no command and you get the list
+above. `sync` reaches the network and rewrites symlinks, so it is worth
+asking for rather than getting by accident.
 
 ## Adding a skill of your own
 

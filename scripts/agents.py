@@ -777,26 +777,54 @@ COMMANDS = {
 }
 
 
+COMMAND_HELP = {
+    "sync": "fetch remote sources, rebuild, and refresh symlinks",
+    "fetch": "clone or update remote sources only",
+    "build": "render .build/ only",
+    "link": "refresh symlinks only",
+    "list": "list every resolvable skill and where it came from",
+    "status": "show what is installed, and from which source",
+    "unlink": "remove every symlink this repo owns",
+}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="agents.py",
-        description=__doc__,
+        description="Manage user-scoped agent skills, agent files, and plugins.",
+        epilog=(
+            "Run `sync` after changing anything in this repo. It is safe to\n"
+            "re-run, and only ever touches symlinks pointing back here."
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("-q", "--quiet", action="store_true")
-    sub = parser.add_subparsers(dest="command")
-    for name in COMMANDS:
-        p = sub.add_parser(name)
+    parser.add_argument(
+        "-q", "--quiet", action="store_true", help="only print warnings and errors"
+    )
+    # So every command can read it, not just the one that defines the flag.
+    parser.set_defaults(no_fetch=False)
+
+    sub = parser.add_subparsers(dest="command", metavar="command")
+    for name, cmd_help in COMMAND_HELP.items():
+        p = sub.add_parser(name, help=cmd_help, description=cmd_help)
         if name == "sync":
             p.add_argument(
                 "--no-fetch",
                 action="store_true",
-                help="skip updating remote sources",
+                help="skip updating remote sources, and do not touch the network",
             )
 
     args = parser.parse_args()
     Out.quiet = args.quiet
-    COMMANDS[args.command or "sync"](load_config(), args)
+
+    # No command: say what is available rather than guessing at one. `sync`
+    # reaches the network and rewrites symlinks, so it should be asked for.
+    if not args.command:
+        parser.print_help()
+        return
+
+    COMMANDS[args.command](load_config(), args)
+
 
 
 if __name__ == "__main__":
