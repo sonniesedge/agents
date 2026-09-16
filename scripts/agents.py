@@ -2,7 +2,7 @@
 """Manage user-scoped agent skills, agent files, and plugins.
 
 Locally-authored skills live unprefixed under skills/. Remote skills are
-cloned into vendor/ from the sources declared in skills.yaml. Both are
+cloned into .vendor/ from the sources declared in skills.yaml. Both are
 rendered into .build/skills/<owner>-<name>/ with a frontmatter `name` that
 matches the directory, per the Agent Skills spec (agentskills.io), and then
 symlinked into the targets declared in agents.yaml.
@@ -36,7 +36,7 @@ except ImportError:  # pragma: no cover
     sys.exit("PyYAML is required: pip install pyyaml")
 
 REPO = Path(__file__).resolve().parent.parent
-VENDOR = REPO / "vendor"
+VENDOR = REPO / ".vendor"
 BUILD = REPO / ".build"
 SKILL_FILE = "SKILL.md"
 FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---[ \t]*\r?\n?", re.DOTALL)
@@ -101,7 +101,7 @@ class Source:
 
     @property
     def slug(self) -> str:
-        """Filesystem-safe identity for this source inside vendor/."""
+        """Filesystem-safe identity for this source inside .vendor/."""
         return "/".join(split_git_url(self.url))
 
     @property

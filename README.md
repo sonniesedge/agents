@@ -17,7 +17,7 @@ skills/            skills authored here (unprefixed on disk)
 agent/             agent definition files (*.md)
 plugin/            plugin files
 scripts/agents.py  the CLI
-vendor/            cloned remote repos              (gitignored)
+.vendor/           cloned remote repos              (gitignored)
 .build/            rendered, prefixed skills        (gitignored)
 ```
 
@@ -84,7 +84,7 @@ sources:
     exclude: ["*.archived"]        # optional denylist
 ```
 
-`fetch` clones into `vendor/<host>/<org>/<repo>` and checks out `ref`,
+`fetch` clones into `.vendor/<host>/<org>/<repo>` and checks out `ref`,
 detached. Re-running `sync` pulls the latest and relinks, so remote skills stay
 current. Removing a source from the manifest removes its symlinks on the next
 sync.
