@@ -14,27 +14,28 @@ Four kinds of artefact, one directory each. Every directory carries its own
 
 ### Skills
 
-`skills/` — procedural knowledge any agent loads on demand, when a task
-matches the skill's description. Skills you author live here; skills from
-other people are declared as `sources` and cloned into `.vendor/`.
+[`skills/`](skills/) — procedural knowledge any agent loads on demand, when
+a task matches the skill's description. Skills you author live here; skills
+from other people are declared as `sources` and cloned into `.vendor/`.
 
 ### Agents
 
-`agents/` — named agents you can switch to or delegate to, one `*.md` file
-each, declaring a model, tool permissions, and a system prompt. See
-`agents/examples/` for a worked example.
+[`agents/`](agents/) — named agents you can switch to or delegate to, one
+`*.md` file each, declaring a model, tool permissions, and a system prompt.
+See [`agents/examples/`](agents/examples/) for a worked example.
 
 ### Rules
 
-`rules/` — instructions loaded into every session, one file per theme. They
-can be linked as individual files, merged into a single `AGENTS.md`, or a
-mixture of both.
+[`rules/`](rules/) — instructions loaded into every session, one file per
+theme. They can be linked as individual files, merged into a single
+`AGENTS.md`, or a mixture of both.
 
 ### Plugins
 
-`plugins/` — JavaScript or TypeScript that hooks into opencode's runtime to
-add tools, intercept tool calls, or answer permission prompts. Real code with
-no sandbox, so reach for a skill first. See `plugins/examples/`.
+[`plugins/`](plugins/) — JavaScript or TypeScript that hooks into opencode's
+runtime to add tools, intercept tool calls, or answer permission prompts. Real
+code with no sandbox, so reach for a skill first. See
+[`plugins/examples/`](plugins/examples/).
 
 ## Naming
 
