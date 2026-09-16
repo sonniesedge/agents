@@ -1,0 +1,21 @@
+# agents.yaml — repo-wide configuration.
+#
+# Controls who "owns" the locally-authored skills and where artefacts get
+# symlinked. Remote skill sources live in skills.yaml.
+
+# Prefix applied to every skill authored in this repo. Skills are stored
+# unprefixed under skills/ and rendered as "<owner>-<skill>" at sync time.
+#
+# Set `auto` to derive the prefix from this repo's own git remote, so a repo
+# published at github.com/sonniesedge/agents yields the prefix "sonniesedge".
+# Set a literal string to pin it regardless of remote.
+owner: auto
+
+# Which remote `owner: auto` reads. Only used when owner is `auto`.
+owner_remote: origin
+
+# Where `./agents sync` installs symlinks. Paths may use ~ and $ENV vars.
+targets:
+  skills: ~/.config/opencode/skill
+  agents: ~/.config/opencode/agent
+  plugins: ~/.config/opencode/plugin
