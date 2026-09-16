@@ -6,7 +6,9 @@ Skills you author yourself, following the
 references, or assets it needs.
 
 Skills from other people are not kept here. They are declared as `sources` in
-`config.yaml`, cloned into `.vendor/`, and never edited in place.
+`config.yaml`, cloned into `.vendor/`, and never edited in place. Their `path`
+selects which subdirectories to take, and `not <path>` excludes parts of a
+tree.
 
 Linked by the `skills` target:
 

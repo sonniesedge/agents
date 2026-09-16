@@ -54,12 +54,12 @@ targets:
 # for SKILL.md files. Every skill found installs as "<owner>-<skill-name>".
 #
 # Fields:
-#   owner    (required) prefix applied to skills from this source
-#   repo     (required) git URL, or "org/name" shorthand for GitHub
-#   ref      (optional) branch, tag, or commit. Default: the repo's HEAD
-#   path     (optional) subdirectory to scan. Default: repo root
-#   include  (optional) list of fnmatch patterns; only matching skills install
-#   exclude  (optional) list of fnmatch patterns; matching skills are skipped
+#   owner  (required) prefix applied to skills from this source
+#   repo   (required) git URL, or "org/name" shorthand for GitHub
+#   ref    (optional) branch, tag, or commit. Default: the repo's HEAD
+#   path   (optional) subdirectory to scan, or a list of them. Default: the
+#          repo root. An entry reading "not <path>" excludes instead, and
+#          globs are allowed: "not skills/*.archived".
 sources:
   - owner: mattpocock
     repo: mattpocock/skills
@@ -69,6 +69,4 @@ sources:
   - owner: vercel-labs
     repo: vercel-labs/skills
     ref: main
-    path: skills
-    include:
-      - find-skills
+    path: skills/find-skills

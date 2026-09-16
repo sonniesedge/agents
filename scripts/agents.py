@@ -108,9 +108,8 @@ class Source:
     owner: str
     repo: str
     ref: str | None = None
-    path: str = ""
-    include: list[str] = field(default_factory=list)
-    exclude: list[str] = field(default_factory=list)
+    # Subdirectories to scan. An entry reading "not <path>" excludes instead.
+    paths: list[str] = field(default_factory=list)
 
     @property
     def url(self) -> str:
@@ -127,10 +126,40 @@ class Source:
     def checkout(self) -> Path:
         return VENDOR / self.slug
 
-    def wants(self, name: str) -> bool:
-        if self.include and not any(fnmatch.fnmatch(name, p) for p in self.include):
-            return False
-        return not any(fnmatch.fnmatch(name, p) for p in self.exclude)
+    @property
+    def includes(self) -> list[str]:
+        """Subdirectories to scan; the repo root when none are given."""
+        return [p for p in self.paths if not is_negated(p)] or [""]
+
+    @property
+    def excludes(self) -> list[str]:
+        return [p.split(None, 1)[1].strip("/") for p in self.paths if is_negated(p)]
+
+    def wants(self, relative: str) -> bool:
+        """Whether a skill at `relative` (posix, from the checkout) is kept."""
+        return not any(path_matches(relative, pat) for pat in self.excludes)
+
+
+def is_negated(entry: str) -> bool:
+    """True for a path written as `not <path>`."""
+    head, _, rest = entry.partition(" ")
+    return head == "not" and bool(rest.strip())
+
+
+def path_matches(relative: str, pattern: str) -> bool:
+    """True if `relative`, or any directory above it, matches `pattern`.
+
+    So "skills/deprecated" excludes everything beneath it, and a glob like
+    "skills/*.archived" excludes each directory it matches.
+    """
+    if relative == pattern or relative.startswith(f"{pattern}/"):
+        return True
+    parts = relative.split("/")
+    return any(
+        fnmatch.fnmatch("/".join(parts[:i]), pattern)
+        for i in range(1, len(parts) + 1)
+    )
+
 
 
 @dataclass
@@ -193,6 +222,28 @@ LOCAL_CONFIG_FILE = "config.local.yaml"
 RETIRED = ("agents.yaml", "skills.yaml", "skills.local.yaml")
 
 
+BANG_NEGATION = re.compile(r"^\s*-\s+!+\s*(?P<path>\S.*?)\s*$", re.MULTILINE)
+
+
+def check_bang_negation(filename: str, text: str) -> None:
+    """Reject `- ! path`, which YAML would quietly turn into an inclusion.
+
+    A leading `!` is a YAML tag. Followed by a space the tag is
+    non-specific and is discarded, so `- ! skills/deprecated` parses as
+    plain `skills/deprecated` — an exclusion inverted into an inclusion,
+    with nothing to notice at runtime. Without the space it is a hard parse
+    error. Negation is written `not <path>` here for exactly this reason.
+    """
+    for match in BANG_NEGATION.finditer(text):
+        found = match.group("path").strip("'\"")
+        Out.die(
+            f"{filename}: `- ! {found}` is not how exclusions are written, and "
+            f"YAML would drop the `!` and include the path instead. Use:\n"
+            f"    - not {found}"
+        )
+
+
+
 def load_config() -> Config:
     main = REPO / CONFIG_FILE
     if not main.exists():
@@ -210,7 +261,9 @@ def load_config() -> Config:
     layers: list[tuple[str, dict]] = []
     for path in (main, REPO / LOCAL_CONFIG_FILE):
         if path.exists():
-            layers.append((path.name, yaml.safe_load(path.read_text()) or {}))
+            text = path.read_text()
+            check_bang_negation(path.name, text)
+            layers.append((path.name, yaml.safe_load(text) or {}))
 
     data: dict = {}
     for _, layer in layers:
@@ -271,17 +324,29 @@ def load_config() -> Config:
     sources = []
     for name, layer in layers:
         for i, entry in enumerate(layer.get("sources") or []):
+            where = f"{name} source #{i + 1}"
             src_owner, src_repo = entry.get("owner"), entry.get("repo")
             if not src_owner or not src_repo:
-                Out.die(f"{name} source #{i + 1} needs both `owner` and `repo`")
+                Out.die(f"{where} needs both `owner` and `repo`")
+
+            retired = {"include", "exclude"} & set(entry)
+            if retired:
+                Out.die(
+                    f"{where} uses `{'`, `'.join(sorted(retired))}`, which "
+                    f"`path` replaced. Select by location instead:\n"
+                    f"    path:\n"
+                    f"      - skills\n"
+                    f"      - not skills/deprecated"
+                )
+
+            raw = entry.get("path") or []
+            paths = [raw] if isinstance(raw, str) else list(raw)
             sources.append(
                 Source(
                     owner=str(src_owner),
                     repo=str(src_repo),
                     ref=entry.get("ref"),
-                    path=(entry.get("path") or "").strip("/"),
-                    include=list(entry.get("include") or []),
-                    exclude=list(entry.get("exclude") or []),
+                    paths=[str(p).strip().strip("/") for p in paths if str(p).strip()],
                 )
             )
     return Config(
@@ -324,23 +389,29 @@ def collect(cfg: Config, *, require_fetch: bool = True) -> list[Skill]:
     for source in cfg.sources:
         if not source.checkout.exists():
             if require_fetch:
-                Out.warn(f"{source.slug} not fetched yet; run `./scripts/agents.py fetch`")
+                Out.warn(
+                    f"{source.slug} not fetched yet; run `./scripts/agents.py fetch`"
+                )
             continue
-        root = source.checkout / source.path if source.path else source.checkout
-        if not root.is_dir():
-            Out.warn(f"{source.slug}: path '{source.path}' does not exist")
-            continue
-        for skill in find_skills(root, source.owner, source.slug):
-            if source.wants(skill.name):
-                skills.append(skill)
+
+        for include in source.includes:
+            root = source.checkout / include if include else source.checkout
+            if not root.is_dir():
+                Out.warn(f"{source.slug}: path '{include}' does not exist")
+                continue
+            for skill in find_skills(root, source.owner, source.slug):
+                relative = skill.src.relative_to(source.checkout).as_posix()
+                if source.wants(relative):
+                    skills.append(skill)
 
     seen: dict[str, Skill] = {}
     for skill in skills:
         if skill.full in seen:
-            Out.warn(
-                f"duplicate skill '{skill.full}' from {skill.origin}; "
-                f"keeping the one from {seen[skill.full].origin}"
-            )
+            if skill.src != seen[skill.full].src:
+                Out.warn(
+                    f"duplicate skill '{skill.full}' from {skill.origin}; "
+                    f"keeping the one from {seen[skill.full].origin}"
+                )
             continue
         seen[skill.full] = skill
     return sorted(seen.values(), key=lambda s: s.full)

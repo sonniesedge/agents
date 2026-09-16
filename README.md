@@ -115,22 +115,41 @@ so changing `owner` in `config.yaml` renames every one of your skills at once.
 
 ## Adding a remote source
 
-Add an entry to `sources` in `config.yaml` and run `./scripts/agents.py sync`:
+Add an entry to `sources` in `config.yaml` and run sync:
 
 ```yaml
 sources:
   - owner: someone          # prefix for every skill from this repo
-    repo: someone/skills    # or a full git/SSH URL
+    repo: https://github.com/someone/skills   # or "someone/skills"
     ref: main               # branch, tag, or commit (optional)
     path: skills            # subdirectory to scan (optional)
-    include: ["tdd", "*-review"]   # optional allowlist
-    exclude: ["*.archived"]        # optional denylist
 ```
 
+`path` also takes a list, to pull from several subdirectories:
+
+```yaml
+    path:
+      - skills/engineering
+      - skills/misc
+```
+
+An entry reading `not <path>` excludes instead, so you can take a whole tree
+minus part of it. Globs work in either direction:
+
+```yaml
+    path:
+      - skills
+      - not skills/deprecated
+      - not skills/*.archived
+```
+
+Excluding a directory excludes everything beneath it. With no `path` at all,
+the whole repo is scanned.
+
 `fetch` clones into `.vendor/<host>/<org>/<repo>` and checks out `ref`,
-detached. Re-running `sync` pulls the latest and relinks, so remote skills stay
-current. Removing a source from the manifest removes its symlinks on the next
-sync.
+detached. Re-running `sync` pulls the latest and relinks, so remote skills
+stay current. Removing a source from the manifest removes its symlinks on the
+next sync.
 
 ### Private sources
 
