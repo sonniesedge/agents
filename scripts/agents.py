@@ -462,12 +462,13 @@ def file_source(tool: str, kind: str, target: Path) -> Path:
     """The repo file a single-file target should point at.
 
     `rules` is shared across tools, so the same content can land as AGENTS.md
-    for one and CLAUDE.md for another. `config` is tool-specific, read from a
-    directory named after the tool.
+    for one and CLAUDE.md for another. `config` is per-tool, read from
+    settings/<tool>/ — tool config filenames are generic enough to collide
+    (settings.json, config.toml) so they are kept in separate directories.
     """
     if kind == "rules":
         return REPO / "rules" / "AGENTS.md"
-    return REPO / tool / target.name
+    return REPO / "settings" / tool / target.name
 
 
 def link(cfg: Config, built: Path) -> None:

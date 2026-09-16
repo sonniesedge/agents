@@ -1,8 +1,10 @@
 # Private/work-internal configuration
 /config.local.yaml
 
-# Personal opencode config: names internal hosts and services
-/opencode/opencode.jsonc
+# Tool settings: these name internal hosts, services, and providers.
+# Tracked docs stay, everything else is local.
+/settings/*/*
+!/settings/*/README.md
 
 # Cloned remote skill repos
 /.vendor/

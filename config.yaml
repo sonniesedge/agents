@@ -26,7 +26,7 @@ owner_remote: origin
 #   agents   directory  <- agents/
 #   plugins  directory  <- plugins/
 #   rules    file       <- rules/AGENTS.md
-#   config   file       <- <tool>/<the target's filename>
+#   config   file       <- settings/<tool>/<the target's filename>
 #
 # `rules` is shared across tools, so the same file can land as AGENTS.md for
 # one and CLAUDE.md for another. `config` is per-tool, read from a directory

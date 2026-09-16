@@ -16,7 +16,7 @@ skills/            skills you author          -> installed with your prefix
 agents/            agent definitions          -> named agents to delegate to
 rules/             AGENTS.md                  -> instructions, always loaded
 plugins/           opencode plugins
-opencode/          opencode.jsonc                    (gitignored)
+settings/          tool config, one dir per tool     (gitignored)
 scripts/agents.py  the CLI
 .vendor/           cloned remote repos               (gitignored)
 .build/            rendered, prefixed skills         (gitignored)
@@ -144,12 +144,12 @@ targets:
 ```
 
 `config` is per-tool instead, read from a directory named after the tool —
-`opencode/opencode.jsonc` for the above, `claude/settings.json` for a
-`claude.config` target.
+`settings/opencode/opencode.jsonc` for the above, `settings/claude/settings.json`
+for a `claude.config` target.
 
-`opencode/opencode.jsonc` is gitignored: a personal opencode config tends to
-name internal hosts, services, and providers. The repo owns the symlink; the
-content stays local.
+Everything under `settings/` except the READMEs is gitignored: tool configs
+tend to name internal hosts, services, and providers. The repo owns the
+symlink; the content stays local.
 
 None of these targets will overwrite a file the repo did not create. If
 something is already there and is not a symlink pointing back here, sync warns
