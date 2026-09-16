@@ -40,7 +40,7 @@ VENDOR = REPO / ".vendor"
 BUILD = REPO / ".build"
 SKILL_FILE = "SKILL.md"
 # Targets that are a single file rather than a directory of entries.
-FILE_TARGETS = frozenset({"rules"})
+FILE_TARGETS = frozenset({"rules", "config"})
 FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---[ \t]*\r?\n?", re.DOTALL)
 NAME_LINE = re.compile(r"^name:.*$", re.MULTILINE)
 
@@ -446,6 +446,12 @@ def link(cfg: Config, built: Path) -> None:
     if "rules" in cfg.targets:
         Out.say(f"linking rules  -> {cfg.targets['rules']}")
         link_file(cfg.targets["rules"], REPO / "rules" / "AGENTS.md")
+
+    # Also a single file. Gitignored, since a personal opencode config tends
+    # to name internal hosts and services.
+    if "config" in cfg.targets:
+        Out.say(f"linking config -> {cfg.targets['config']}")
+        link_file(cfg.targets["config"], REPO / "config" / "opencode.jsonc")
 
 
 # --------------------------------------------------------------------------

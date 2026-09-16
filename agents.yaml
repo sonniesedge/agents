@@ -24,3 +24,4 @@ targets:
   agents: ~/.config/opencode/agent
   plugins: ~/.config/opencode/plugin
   rules: ~/.config/opencode/AGENTS.md
+  config: ~/.config/opencode/opencode.jsonc

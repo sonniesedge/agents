@@ -15,6 +15,7 @@ skills.yaml        manifest of remote skill sources
 skills.local.yaml  private sources, merged in       (gitignored)
 skills/            skills authored here (unprefixed on disk)
 rules/AGENTS.md    personal, always-on agent rules
+config/            opencode.jsonc                   (gitignored)
 agent/             agent definition files (*.md)
 plugin/            plugin files
 scripts/agents.py  the CLI
@@ -100,17 +101,28 @@ repo can stay public without advertising them.
 
 `agents.yaml` decides where things land. By default:
 
-| what    | target                        |
-| ------- | ----------------------------- |
-| skills  | `~/.config/opencode/skill`    |
-| agents  | `~/.config/opencode/agent`    |
-| plugins | `~/.config/opencode/plugin`   |
-| rules   | `~/.config/opencode/AGENTS.md`|
+| what    | target                            |
+| ------- | --------------------------------- |
+| skills  | `~/.config/opencode/skill`        |
+| agents  | `~/.config/opencode/agent`        |
+| plugins | `~/.config/opencode/plugin`       |
+| rules   | `~/.config/opencode/AGENTS.md`    |
+| config  | `~/.config/opencode/opencode.jsonc` |
 
-The first three are directories of entries. `rules` is a single file, because
-[opencode reads global rules](https://opencode.ai/docs/rules/) from exactly
-`~/.config/opencode/AGENTS.md`. It is optional — drop the line to stop
-managing it.
+The first three are directories of entries. `rules` and `config` are single
+files, and both are optional — drop the line to stop managing one.
+
+`rules` is a single file because [opencode reads global
+rules](https://opencode.ai/docs/rules/) from exactly
+`~/.config/opencode/AGENTS.md`.
+
+`config/opencode.jsonc` is gitignored: a personal opencode config tends to
+name internal hosts, services, and providers. The repo owns the symlink; the
+content stays local.
+
+None of these targets will overwrite a file the repo did not create. If
+something is already there and is not a symlink pointing back here, sync warns
+and leaves it untouched.
 
 Note that `rules/AGENTS.md` deliberately is *not* this repo's root
 `AGENTS.md`. opencode checks for local rule files before global ones, so a
