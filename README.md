@@ -1,4 +1,4 @@
-# agents
+# Agents
 
 User-scoped agent skills, agent files, and plugins — version controlled in one
 place and symlinked into the tools that consume them.
@@ -7,28 +7,34 @@ Skills follow the [Agent Skills](https://agentskills.io) standard: a folder
 containing a `SKILL.md` with `name` and `description` frontmatter, plus any
 scripts, references, or assets it needs.
 
-## Layout
+## Types
 
-```
-config.yaml        owner, symlink targets, remote sources
-config.local.yaml  private settings, layered on top  (gitignored)
-skills/            skills you author          -> installed with your prefix
-agents/            agent definitions          -> named agents to delegate to
-rules/             themed *.md rule files     -> instructions, always loaded
-plugins/           opencode plugins
-settings/          tool config, one dir per tool     (gitignored)
-scripts/agents.py  the CLI
-.vendor/           cloned remote repos               (gitignored)
-.build/            rendered, prefixed skills         (gitignored)
-```
+Four kinds of artefact, one directory each. Every directory carries its own
+`README.md` with the detail, and is symlinked out as-is.
 
-The two `config*.yaml` files at the root configure this repo. Every directory
-is named for the artefact it holds, is symlinked out as-is, and carries its
-own `README.md` explaining it.
+### Skills
 
-`agents/` and `rules/` are the easy pair to confuse. `agents/` defines named
-agents you choose between; `rules/` holds instructions that apply to all of
-them, one file per theme.
+`skills/` — procedural knowledge any agent loads on demand, when a task
+matches the skill's description. Skills you author live here; skills from
+other people are declared as `sources` and cloned into `.vendor/`.
+
+### Agents
+
+`agents/` — named agents you can switch to or delegate to, one `*.md` file
+each, declaring a model, tool permissions, and a system prompt. See
+`agents/examples/` for a worked example.
+
+### Rules
+
+`rules/` — instructions loaded into every session, one file per theme. They
+can be linked as individual files, merged into a single `AGENTS.md`, or a
+mixture of both.
+
+### Plugins
+
+`plugins/` — JavaScript or TypeScript that hooks into opencode's runtime to
+add tools, intercept tool calls, or answer permission prompts. Real code with
+no sandbox, so reach for a skill first. See `plugins/examples/`.
 
 ## Naming
 
@@ -53,67 +59,20 @@ re-run of `./scripts/agents.py sync`.
 Changing the prefix is safe to do: the next sync removes the old symlinks and
 creates the new ones.
 
-## Usage
+## Adding skills
 
-```sh
-./scripts/agents.py                  # list the available commands
-./scripts/agents.py sync             # fetch remotes, rebuild, refresh symlinks
-./scripts/agents.py sync --no-fetch  # rebuild and relink without touching the network
-./scripts/agents.py status           # what is linked, and where it came from
-./scripts/agents.py list             # every resolvable skill
-./scripts/agents.py fetch            # update remote sources only
-./scripts/agents.py unlink           # remove every symlink this repo owns
-```
-
-`sync` is the everyday command and is safe to re-run. It only ever touches
-symlinks that point back into this repo — anything else in the target
-directories is left alone and reported as a warning.
-
-It is not the default, though: run with no command and you get the list
-above. `sync` reaches the network and rewrites symlinks, so it is worth
-asking for rather than getting by accident.
-
-### JSON output
-
-`--json` works with any command, for scripting or for an agent reading the
-result:
-
-```sh
-./scripts/agents.py status --json | jq '.targets[] | select(.state != "linked")'
-./scripts/agents.py sync --json   | jq '.targets[].added'
-./scripts/agents.py list --json   | jq -r '.skills[] | "\(.name)\t\(.origin)"'
-```
-
-`--json` and `-q` are accepted either before or after the command, so
-`sync --json` and `--json sync` both work.
-
-Every document has `ok`, `command`, and `warnings`; each command adds its own
-keys — `skills`, `sources`/`targets`, `fetched`, `built`, `added`/`removed`,
-`pruned`.
-
-Warnings go into the document rather than to stderr, so one parse sees
-everything that happened. Failures are JSON too, with `ok: false` and an
-`error`, exiting non-zero:
-
-```json
-{
-  "ok": false,
-  "error": "config.yaml: `opencode.skillz` is not a recognised target. ..."
-}
-```
-
-## Adding a skill of your own
+### Your own
 
 ```sh
 mkdir -p skills/my-skill
-$EDITOR skills/my-skill/SKILL.md   # name: my-skill  (unprefixed)
+$EDITOR skills/my-skill/SKILL.md
 ./scripts/agents.py sync
 ```
 
 Write the frontmatter `name` unprefixed. The prefix is applied at build time,
 so changing `owner` in `config.yaml` renames every one of your skills at once.
 
-## Adding a remote source
+### Remote sources
 
 Add an entry to `sources` in `config.yaml` and run sync:
 
@@ -160,6 +119,38 @@ next sync.
 or private settings there so this repo can stay public without advertising
 them.
 
+## Usage
+
+```sh
+./scripts/agents.py                  # list the available commands
+./scripts/agents.py sync             # fetch remotes, rebuild, refresh symlinks
+./scripts/agents.py sync --no-fetch  # rebuild and relink without touching the network
+./scripts/agents.py status           # what is linked, and where it came from
+./scripts/agents.py list             # every resolvable skill
+./scripts/agents.py fetch            # update remote sources only
+./scripts/agents.py unlink           # remove every symlink this repo owns
+```
+
+`sync` is the everyday command and is safe to re-run. It only ever touches
+symlinks that point back into this repo — anything else in the target
+directories is left alone and reported as a warning.
+
+It is not the default, though: run with no command and you get the list
+above. `sync` reaches the network and rewrites symlinks, so it is worth
+asking for rather than getting by accident.
+
+### JSON output
+
+`--json` works with any command, for programmatic usage:
+
+```sh
+./scripts/agents.py status --json | jq '.targets[] | select(.state != "linked")'
+```
+
+Warnings go into the document rather than to stderr, and failures are JSON
+too, with `ok: false` and a non-zero exit. The flag is accepted either before
+or after the command.
+
 ## Targets
 
 `config.yaml` decides where things land, grouped by tool:
@@ -182,7 +173,7 @@ Every kind is optional — drop a line to stop managing it. Five are recognised:
 | `agents`  | directory | `agents/`                     |
 | `plugins` | directory | `plugins/`                    |
 | `rules`   | directory | `rules/`                      |
-| `config`  | file      | `<tool>/<target's filename>`  |
+| `config`  | file      | `settings/<tool>/<filename>`  |
 
 Anything else is a typo and sync says so, rather than silently linking
 nothing.
@@ -216,8 +207,8 @@ Retargeting anything is safe: sync records what it linked and removes the old
 location on the next run.
 
 `config` is per-tool instead, read from a directory named after the tool —
-`settings/opencode/opencode.jsonc` for the above, `settings/claude/settings.json`
-for a `claude.config` target.
+`settings/opencode/opencode.jsonc` for the above, and
+`settings/claude/settings.json` for a `claude.config` target.
 
 Everything under `settings/` except the READMEs is gitignored: tool configs
 tend to name internal hosts, services, and providers. The repo owns the
