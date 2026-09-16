@@ -18,17 +18,26 @@ owner: auto
 # Which remote `owner: auto` reads. Only used when owner is `auto`.
 owner_remote: origin
 
-# Where `./scripts/agents.py sync` installs symlinks. Paths may use ~ and
-# $ENV vars.
+# Where `./scripts/agents.py sync` installs symlinks, grouped by tool. Paths
+# may use ~ and $ENV vars.
 #
-# skills/agents/plugins are directories of entries. `rules` and `config` are
-# single files, and both are optional — drop the line to stop managing one.
+# Recognised kinds within a tool, all optional:
+#   skills   directory  <- .build/skills/   (rendered, prefixed)
+#   agents   directory  <- agent/
+#   plugins  directory  <- plugin/
+#   rules    file       <- rules/AGENTS.md
+#   config   file       <- <tool>/<the target's filename>
+#
+# `rules` is shared across tools, so the same file can land as AGENTS.md for
+# one and CLAUDE.md for another. `config` is per-tool, read from a directory
+# named after the tool.
 targets:
-  skills: ~/.config/opencode/skill
-  agents: ~/.config/opencode/agent
-  plugins: ~/.config/opencode/plugin
-  rules: ~/.config/opencode/AGENTS.md
-  config: ~/.config/opencode/opencode.jsonc
+  opencode:
+    skills: ~/.config/opencode/skill
+    agents: ~/.config/opencode/agent
+    plugins: ~/.config/opencode/plugin
+    rules: ~/.config/opencode/AGENTS.md
+    config: ~/.config/opencode/opencode.jsonc
 
 # Remote skill sources. Each is a git repo cloned into .vendor/ and scanned
 # for SKILL.md files. Every skill found installs as "<owner>-<skill-name>".

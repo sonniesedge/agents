@@ -5,7 +5,7 @@ Locally-authored skills live unprefixed under skills/. Remote skills are
 cloned into .vendor/ from the sources declared in config.yaml. Both are
 rendered into .build/skills/<owner>-<name>/ with a frontmatter `name` that
 matches the directory, per the Agent Skills spec (agentskills.io), and then
-symlinked into the targets declared in config.yaml.
+symlinked into the per-tool targets declared in config.yaml.
 
 Usage:
     ./scripts/agents.py sync            fetch + build + link (the everyday command)
@@ -39,8 +39,10 @@ REPO = Path(__file__).resolve().parent.parent
 VENDOR = REPO / ".vendor"
 BUILD = REPO / ".build"
 SKILL_FILE = "SKILL.md"
-# Targets that are a single file rather than a directory of entries.
-FILE_TARGETS = frozenset({"rules", "config"})
+# Kinds a tool may declare a target for.
+DIR_KINDS = ("skills", "agents", "plugins")
+FILE_KINDS = ("rules", "config")
+KINDS = DIR_KINDS + FILE_KINDS
 FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---[ \t]*\r?\n?", re.DOTALL)
 NAME_LINE = re.compile(r"^name:.*$", re.MULTILINE)
 
@@ -120,7 +122,7 @@ class Source:
 class Config:
     owner: str
     owner_from: str  # how `owner` was resolved, for `status`
-    targets: dict[str, Path]
+    targets: dict[str, dict[str, Path]]  # tool -> kind -> path
     sources: list[Source]
 
 
@@ -183,10 +185,25 @@ def load_config() -> Config:
     else:
         owner, owner_from = str(raw_owner).strip(), CONFIG_FILE
 
-    targets = {k: expand(v) for k, v in (data.get("targets") or {}).items()}
-    for key in ("skills", "agents", "plugins"):
-        if key not in targets:
-            Out.die(f"{CONFIG_FILE} targets must include `{key}`")
+    targets: dict[str, dict[str, Path]] = {}
+    raw_targets = data.get("targets") or {}
+    if any(not isinstance(v, dict) for v in raw_targets.values()):
+        Out.die(
+            "targets must be grouped by tool, e.g.\n"
+            "    targets:\n"
+            "      opencode:\n"
+            "        skills: ~/.config/opencode/skill"
+        )
+    for tool, kinds in raw_targets.items():
+        for kind in kinds:
+            if kind not in KINDS:
+                Out.die(
+                    f"{CONFIG_FILE}: unknown target `{tool}.{kind}`. "
+                    f"Expected one of: {', '.join(KINDS)}"
+                )
+        targets[str(tool)] = {k: expand(v) for k, v in kinds.items()}
+    if not targets:
+        Out.die(f"{CONFIG_FILE} must declare at least one tool under `targets`")
 
     sources = []
     for name, layer in layers:
@@ -423,50 +440,38 @@ def link_file(link: Path, src: Path | None) -> None:
     Out.say(f"  + {link.name}")
 
 
+def dir_entries(kind: str, built: Path) -> dict[str, Path]:
+    """The set of entries a directory target of `kind` should contain."""
+    if kind == "skills":
+        return {d.name: d for d in sorted(built.iterdir()) if d.is_dir()}
+
+    src = REPO / {"agents": "agent", "plugins": "plugin"}[kind]
+    if not src.is_dir():
+        return {}
+    entries = sorted(src.glob("*.md")) if kind == "agents" else sorted(src.iterdir())
+    return {f.name: f for f in entries if not f.name.startswith(".")}
+
+
+def file_source(tool: str, kind: str, target: Path) -> Path:
+    """The repo file a single-file target should point at.
+
+    `rules` is shared across tools, so the same content can land as AGENTS.md
+    for one and CLAUDE.md for another. `config` is tool-specific, read from a
+    directory named after the tool.
+    """
+    if kind == "rules":
+        return REPO / "rules" / "AGENTS.md"
+    return REPO / tool / target.name
+
+
 def link(cfg: Config, built: Path) -> None:
-    Out.say(f"linking skills -> {cfg.targets['skills']}")
-    relink(
-        cfg.targets["skills"],
-        {d.name: d for d in sorted(built.iterdir()) if d.is_dir()},
-    )
-
-    agents_src = REPO / "agent"
-    Out.say(f"linking agents -> {cfg.targets['agents']}")
-    relink(
-        cfg.targets["agents"],
-        {
-            f.name: f
-            for f in sorted(agents_src.glob("*.md"))
-            if not f.name.startswith(".")
-        }
-        if agents_src.is_dir()
-        else {},
-    )
-
-    plugins_src = REPO / "plugin"
-    Out.say(f"linking plugins -> {cfg.targets['plugins']}")
-    relink(
-        cfg.targets["plugins"],
-        {
-            f.name: f
-            for f in sorted(plugins_src.iterdir())
-            if not f.name.startswith(".")
-        }
-        if plugins_src.is_dir()
-        else {},
-    )
-
-    # Optional, and a single file rather than a directory: opencode's global
-    # rules live at exactly ~/.config/opencode/AGENTS.md.
-    if "rules" in cfg.targets:
-        Out.say(f"linking rules  -> {cfg.targets['rules']}")
-        link_file(cfg.targets["rules"], REPO / "rules" / "AGENTS.md")
-
-    # Also a single file. Gitignored, since a personal opencode config tends
-    # to name internal hosts and services.
-    if "config" in cfg.targets:
-        Out.say(f"linking config -> {cfg.targets['config']}")
-        link_file(cfg.targets["config"], REPO / "opencode" / "opencode.jsonc")
+    for tool, kinds in cfg.targets.items():
+        for kind, target in kinds.items():
+            Out.say(f"linking {tool}.{kind} -> {target}")
+            if kind in FILE_KINDS:
+                link_file(target, file_source(tool, kind, target))
+            else:
+                relink(target, dir_entries(kind, built))
 
 
 # --------------------------------------------------------------------------
@@ -520,50 +525,52 @@ def cmd_status(cfg: Config, _: argparse.Namespace) -> None:
         else:
             print(f"source {source.slug} NOT FETCHED (owner: {source.owner})")
 
-    for kind, target in cfg.targets.items():
-        print(f"\n{kind} -> {target}")
-        if kind in FILE_TARGETS:
-            if owned_by_repo(target):
-                broken = "" if target.exists() else "  BROKEN"
-                print(f"  {target.name}  <- local{broken}")
-            elif target.exists():
-                print("  (exists, but not linked from this repo)")
-            else:
-                print("  (not linked)")
-            continue
-        if not target.is_dir():
-            print("  (target directory does not exist)")
-            continue
-        managed = [e for e in sorted(target.iterdir()) if owned_by_repo(e)]
-        if not managed:
-            print("  (nothing linked from this repo)")
-        for entry in managed:
-            note = ""
-            if kind == "skills":
-                skill = skills.get(entry.name)
-                note = f"  <- {skill.origin}" if skill else "  <- STALE"
-            broken = "" if entry.exists() else "  BROKEN"
-            print(f"  {entry.name}{note}{broken}")
+    for tool, kinds in cfg.targets.items():
+        for kind, target in kinds.items():
+            print(f"\n{tool}.{kind} -> {target}")
+            if kind in FILE_KINDS:
+                if owned_by_repo(target):
+                    broken = "" if target.exists() else "  BROKEN"
+                    print(f"  {target.name}  <- local{broken}")
+                elif target.exists():
+                    print("  (exists, but not linked from this repo)")
+                else:
+                    print("  (not linked)")
+                continue
+            if not target.is_dir():
+                print("  (target directory does not exist)")
+                continue
+            managed = [e for e in sorted(target.iterdir()) if owned_by_repo(e)]
+            if not managed:
+                print("  (nothing linked from this repo)")
+            for entry in managed:
+                note = ""
+                if kind == "skills":
+                    skill = skills.get(entry.name)
+                    note = f"  <- {skill.origin}" if skill else "  <- STALE"
+                broken = "" if entry.exists() else "  BROKEN"
+                print(f"  {entry.name}{note}{broken}")
 
 
 def cmd_unlink(cfg: Config, _: argparse.Namespace) -> None:
     total = 0
-    for kind, target in cfg.targets.items():
-        if kind in FILE_TARGETS:
-            if owned_by_repo(target):
-                Out.say(f"unlinking {kind} from {target}")
-                target.unlink()
-                total += 1
-                Out.say(f"  - {target.name}")
-            continue
-        if not target.is_dir():
-            continue
-        Out.say(f"unlinking {kind} from {target}")
-        for entry in sorted(target.iterdir()):
-            if owned_by_repo(entry):
-                entry.unlink()
-                total += 1
-                Out.say(f"  - {entry.name}")
+    for tool, kinds in cfg.targets.items():
+        for kind, target in kinds.items():
+            if kind in FILE_KINDS:
+                if owned_by_repo(target):
+                    Out.say(f"unlinking {tool}.{kind} from {target}")
+                    target.unlink()
+                    total += 1
+                    Out.say(f"  - {target.name}")
+                continue
+            if not target.is_dir():
+                continue
+            Out.say(f"unlinking {tool}.{kind} from {target}")
+            for entry in sorted(target.iterdir()):
+                if owned_by_repo(entry):
+                    entry.unlink()
+                    total += 1
+                    Out.say(f"  - {entry.name}")
     Out.say(f"removed {total} symlink(s)")
 
 

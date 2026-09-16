@@ -102,22 +102,44 @@ them.
 
 ## Targets
 
-`config.yaml` decides where things land. By default:
+`config.yaml` decides where things land, grouped by tool:
 
-| what    | target                            |
-| ------- | --------------------------------- |
-| skills  | `~/.config/opencode/skill`        |
-| agents  | `~/.config/opencode/agent`        |
-| plugins | `~/.config/opencode/plugin`       |
-| rules   | `~/.config/opencode/AGENTS.md`    |
-| config  | `~/.config/opencode/opencode.jsonc` |
+```yaml
+targets:
+  opencode:
+    skills: ~/.config/opencode/skill
+    agents: ~/.config/opencode/agent
+    plugins: ~/.config/opencode/plugin
+    rules: ~/.config/opencode/AGENTS.md
+    config: ~/.config/opencode/opencode.jsonc
+```
 
-The first three are directories of entries. `rules` and `config` are single
-files, and both are optional — drop the line to stop managing one.
+Every kind is optional — drop a line to stop managing it. Five are recognised:
 
-`rules` is a single file because [opencode reads global
-rules](https://opencode.ai/docs/rules/) from exactly
-`~/.config/opencode/AGENTS.md`.
+| kind      | shape     | source                        |
+| --------- | --------- | ----------------------------- |
+| `skills`  | directory | `.build/skills/` (prefixed)   |
+| `agents`  | directory | `agent/`                      |
+| `plugins` | directory | `plugin/`                     |
+| `rules`   | file      | `rules/AGENTS.md`             |
+| `config`  | file      | `<tool>/<target's filename>`  |
+
+Anything else is a typo and sync says so, rather than silently linking
+nothing.
+
+Adding a second tool is config-only. `rules` is shared across tools, so one
+file can land under whatever name each expects:
+
+```yaml
+targets:
+  claude:
+    skills: ~/.claude/skills
+    rules: ~/.claude/CLAUDE.md   # same rules/AGENTS.md content
+```
+
+`config` is per-tool instead, read from a directory named after the tool —
+`opencode/opencode.jsonc` for the above, `claude/settings.json` for a
+`claude.config` target.
 
 `opencode/opencode.jsonc` is gitignored: a personal opencode config tends to
 name internal hosts, services, and providers. The repo owns the symlink; the
