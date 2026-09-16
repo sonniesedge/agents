@@ -898,6 +898,31 @@ COMMAND_HELP = {
 }
 
 
+def global_flags(suppress: bool) -> argparse.ArgumentParser:
+    """The flags accepted both before and after the command.
+
+    The copies attached to subcommands default to SUPPRESS so that they do
+    not overwrite a value already given ahead of the command — otherwise
+    `--json sync` would be silently reset by the subparser's own default.
+    """
+    parser = argparse.ArgumentParser(add_help=False)
+    default = argparse.SUPPRESS if suppress else False
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        default=default,
+        help="only print warnings and errors",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=default,
+        help="print the result as JSON instead of text",
+    )
+    return parser
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="agents.py",
@@ -907,21 +932,17 @@ def main() -> None:
             "that point back into this repo. Anything else is left alone."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument(
-        "-q", "--quiet", action="store_true", help="only print warnings and errors"
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="print the result as JSON instead of text",
+        parents=[global_flags(suppress=False)],
     )
     # So every command can read it, not just the one that defines the flag.
     parser.set_defaults(no_fetch=False)
 
+    shared = global_flags(suppress=True)
     sub = parser.add_subparsers(dest="command", metavar="command")
     for name, cmd_help in COMMAND_HELP.items():
-        p = sub.add_parser(name, help=cmd_help, description=cmd_help)
+        p = sub.add_parser(
+            name, help=cmd_help, description=cmd_help, parents=[shared]
+        )
         if name == "sync":
             p.add_argument(
                 "--no-fetch",

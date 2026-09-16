@@ -79,10 +79,13 @@ asking for rather than getting by accident.
 result:
 
 ```sh
-./scripts/agents.py --json status | jq '.targets[] | select(.state != "linked")'
-./scripts/agents.py --json sync   | jq '.targets[].added'
-./scripts/agents.py --json list   | jq -r '.skills[] | "\(.name)\t\(.origin)"'
+./scripts/agents.py status --json | jq '.targets[] | select(.state != "linked")'
+./scripts/agents.py sync --json   | jq '.targets[].added'
+./scripts/agents.py list --json   | jq -r '.skills[] | "\(.name)\t\(.origin)"'
 ```
+
+`--json` and `-q` are accepted either before or after the command, so
+`sync --json` and `--json sync` both work.
 
 Every document has `ok`, `command`, and `warnings`; each command adds its own
 keys — `skills`, `sources`/`targets`, `fetched`, `built`, `added`/`removed`,
