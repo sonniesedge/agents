@@ -793,8 +793,8 @@ def main() -> None:
         prog="agents.py",
         description="Manage user-scoped agent skills, agent files, and plugins.",
         epilog=(
-            "Run `sync` after changing anything in this repo. It is safe to\n"
-            "re-run, and only ever touches symlinks pointing back here."
+            "Every command is safe to re-run, and only ever touches symlinks\n"
+            "that point back into this repo. Anything else is left alone."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -817,10 +817,15 @@ def main() -> None:
     args = parser.parse_args()
     Out.quiet = args.quiet
 
-    # No command: say what is available rather than guessing at one. `sync`
-    # reaches the network and rewrites symlinks, so it should be asked for.
+    # No command: point at sync rather than running it. sync reaches the
+    # network and rewrites symlinks, so it should be asked for.
     if not args.command:
         parser.print_help()
+        print(
+            "\nMost of the time you want:\n"
+            "    ./scripts/agents.py sync\n"
+            "which updates remote sources, rebuilds, and refreshes every symlink."
+        )
         return
 
     COMMANDS[args.command](load_config(), args)
