@@ -1,23 +1,31 @@
 # Agents
 
-User-scoped agent skills, agent files, and plugins for your agent harness. All version controlled in one
-place and symlinked into the tools that consume them.
+User-scoped agent skills, agent files, and plugins for your agent harness. All
+version controlled in one place and symlinked into the tools that consume
+them.
 
-Focussed on [opencode](https://opencode.ai/) for now, but flexible enough to be expanded to other agent harnesses.
+Focussed on [opencode](https://opencode.ai/) for now, but flexible enough to
+be expanded to other agent harnesses.
+
+Skills follow the [Agent Skills](https://agentskills.io) standard: a folder
+containing a `SKILL.md` with `name` and `description` frontmatter, plus any
+scripts, references, or assets it needs.
 
 ## Quick start
 
 To symlink the skills, rules, plugins, and agents into your config:
 
 ```sh
-./agents.py sync 
+./agents.py sync
 ```
 
-Once you've made changes to your own resources or manifest you can run it again to link everything up.
+Once you've made changes to your own resources or manifest, run it again to
+link everything up.
 
 ## Resource Types
 
-Four kinds of resources, one directory each. Every directory is symlinked out as-is.
+Four kinds of resources, one directory each. Every directory is symlinked out
+as-is, and carries its own `README.md` with the detail.
 
 ### Skills
 
