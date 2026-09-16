@@ -33,11 +33,11 @@ as-is, and carries its own `README.md` with the detail.
 a task matches the skill's description. Skills you author live here; skills
 from other people are declared as `sources` and cloned into `.vendor/`.
 
-### Agents
+### Subagents
 
-[`agents/`](agents/) — named agents you can switch to or delegate to, one
-`*.md` file each, declaring a model, tool permissions, and a system prompt.
-See [`agents/examples/`](agents/examples/) for a worked example.
+[`subagents/`](subagents/) — named agents you can switch to or delegate to,
+one `*.md` file each, declaring a model, tool permissions, and a system
+prompt. See [`subagents/examples/`](subagents/examples/) for a worked example.
 
 ### Rules
 
@@ -175,7 +175,7 @@ or after the command.
 targets:
   opencode:
     skills: ~/.config/opencode/skill
-    agents: ~/.config/opencode/agent
+    subagents: ~/.config/opencode/agent
     plugins: ~/.config/opencode/plugin
     rules: ~/.config/opencode/rules
     config: ~/.config/opencode/opencode.jsonc
@@ -183,13 +183,13 @@ targets:
 
 Every kind is optional — drop a line to stop managing it. Five are recognised:
 
-| kind      | shape     | source                        |
-| --------- | --------- | ----------------------------- |
-| `skills`  | directory | `.build/skills/` (prefixed)   |
-| `agents`  | directory | `agents/`                     |
-| `plugins` | directory | `plugins/`                    |
-| `rules`   | directory | `rules/`                      |
-| `config`  | file      | `settings/<tool>/<filename>`  |
+| kind        | shape     | source                       |
+| ----------- | --------- | ---------------------------- |
+| `skills`    | directory | `.build/skills/` (prefixed)  |
+| `subagents` | directory | `subagents/`                 |
+| `plugins`   | directory | `plugins/`                   |
+| `rules`     | directory | `rules/`                     |
+| `config`    | file      | `settings/<tool>/<filename>` |
 
 Anything else is a typo and sync says so, rather than silently linking
 nothing.

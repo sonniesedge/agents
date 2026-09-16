@@ -48,7 +48,7 @@ $EDITOR skills/my-skill/SKILL.md
 Any directory containing a `SKILL.md` is found, including nested ones, so
 skills may be grouped into subdirectories.
 
-## Not to be confused with `agents/`
+## Not to be confused with `subagents/`
 
 A skill is procedural knowledge any agent can load when a task matches its
 description. An agent definition creates a whole named agent. Skills are

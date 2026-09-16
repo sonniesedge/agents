@@ -41,7 +41,7 @@ VENDOR = REPO / ".vendor"
 BUILD = REPO / ".build"
 SKILL_FILE = "SKILL.md"
 # Kinds a tool may declare a target for.
-DIR_KINDS = ("skills", "agents", "plugins")
+DIR_KINDS = ("skills", "subagents", "plugins")
 FILE_KINDS = ("config",)
 # `rules` takes a directory of themed files, optionally merged into one.
 DUAL_KINDS = ("rules",)
@@ -285,6 +285,12 @@ def load_config() -> Config:
         parsed: dict[str, Target] = {}
         for kind, value in kinds.items():
             where = f"{CONFIG_FILE}: `{tool}.{kind}`"
+            if kind == "agents":
+                Out.die(
+                    f"{where} was renamed to `subagents`, and the directory it "
+                    f"installs from is now subagents/.\nRename the key; the path "
+                    f"it points at does not change."
+                )
             if kind not in KINDS:
                 Out.die(
                     f"{where} is not a recognised target. "
@@ -646,11 +652,11 @@ def dir_entries(kind: str, built: Path) -> dict[str, Path]:
     if kind == "skills":
         return {d.name: d for d in sorted(built.iterdir()) if d.is_dir()}
 
-    # agents/, plugins/ and rules/ are named for their kind.
+    # subagents/, plugins/ and rules/ are named for their kind.
     src = REPO / kind
     if not src.is_dir():
         return {}
-    markdown_only = kind in ("agents", "rules")
+    markdown_only = kind in ("subagents", "rules")
     entries = sorted(src.glob("*.md")) if markdown_only else sorted(src.iterdir())
     # README.md documents the directory and examples/ demonstrates it;
     # neither is an artefact to install.

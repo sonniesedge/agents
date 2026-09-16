@@ -1,23 +1,24 @@
-# agents/
+# subagents/
 
 Agent definitions. Each `*.md` file declares one **named agent** you can
 switch to or delegate work to: its model, its tool permissions, and its
 system prompt.
 
-Linked by the `agents` target:
+Linked by the `subagents` target:
 
 ```yaml
 targets:
   opencode:
-    agents: ~/.config/opencode/agent
+    subagents: ~/.config/opencode/agent
 ```
 
-Note the target path is opencode's own directory name, which is singular.
-This directory is plural to match the target *kind*.
+Note the target path is opencode's own directory name, `agent`. This
+directory is named for the target *kind* instead, and says `sub` to keep it
+distinct from `AGENTS.md`, which is a rules file and nothing to do with this.
 
 ## Not to be confused with `rules/`
 
-| | `agents/` | `rules/` |
+| | `subagents/` | `rules/` |
 | --- | --- | --- |
 | what | agent definitions | instructions |
 | effect | creates agents to choose between | changes how every agent behaves |
@@ -25,7 +26,7 @@ This directory is plural to match the target *kind*.
 | count | one file per agent | one file per theme |
 
 `rules/` holds themed instruction files that apply to every agent. Despite
-`agents/` and `AGENTS.md`-style naming elsewhere, the two are unrelated.
+`subagents/` and `AGENTS.md`-style naming elsewhere, the two are unrelated.
 
 ## Shape of a definition
 
@@ -52,7 +53,7 @@ data exposure. Report findings by severity.
 ## Adding one
 
 ```sh
-$EDITOR agents/security-reviewer.md
+$EDITOR subagents/security-reviewer.md
 ./agents.py sync
 ```
 

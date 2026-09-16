@@ -22,11 +22,11 @@ owner_remote: origin
 # may use ~ and $ENV vars.
 #
 # Recognised kinds within a tool, all optional:
-#   skills   directory  <- .build/skills/   (rendered, prefixed)
-#   agents   directory  <- agents/
-#   plugins  directory  <- plugins/
-#   rules    directory  <- rules/
-#   config   file       <- settings/<tool>/<the target's filename>
+#   skills     directory  <- .build/skills/   (rendered, prefixed)
+#   subagents  directory  <- subagents/
+#   plugins    directory  <- plugins/
+#   rules      directory  <- rules/
+#   config     file       <- settings/<tool>/<the target's filename>
 #
 # Any target may be written longhand to pass options:
 #
@@ -45,7 +45,7 @@ owner_remote: origin
 targets:
   opencode:
     skills: ~/.config/opencode/skill
-    agents: ~/.config/opencode/agent
+    subagents: ~/.config/opencode/agent
     plugins: ~/.config/opencode/plugin
     rules: ~/.config/opencode/rules
     config: ~/.config/opencode/opencode.jsonc

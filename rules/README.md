@@ -110,9 +110,9 @@ opencode ignores that frontmatter and loads the rule regardless, so a
 path-scoped rule behaves differently in each tool. Use it only for rules that
 are harmless when always loaded.
 
-## Not to be confused with `agents/`
+## Not to be confused with `subagents/`
 
-| | `rules/` | `agents/` |
+| | `rules/` | `subagents/` |
 | --- | --- | --- |
 | what | instructions | agent definitions |
 | effect | changes how every agent behaves | creates agents to choose between |
