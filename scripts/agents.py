@@ -541,11 +541,12 @@ def dir_entries(kind: str, built: Path) -> dict[str, Path]:
         return {}
     markdown_only = kind in ("agents", "rules")
     entries = sorted(src.glob("*.md")) if markdown_only else sorted(src.iterdir())
-    # README.md documents the directory; it is not an artefact to link out.
+    # README.md documents the directory and examples/ demonstrates it;
+    # neither is an artefact to install.
     return {
         f.name: f
         for f in entries
-        if not f.name.startswith(".") and f.name != "README.md"
+        if not f.name.startswith(".") and f.name not in ("README.md", "examples")
     }
 
 

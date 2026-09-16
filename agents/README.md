@@ -58,5 +58,8 @@ $EDITOR agents/security-reviewer.md
 
 Filenames are used as-is — unlike skills, no owner prefix is applied.
 
-`README.md` is skipped when linking, so this file is not mistaken for an
-agent definition.
+See `examples/security-reviewer.md` for a worked example. Copy it up one level
+to activate it: `examples/` is deliberately not linked out, so nothing in
+there is ever a live agent.
+
+`README.md` and `examples/` are both skipped when linking.
