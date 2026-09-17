@@ -121,9 +121,21 @@ class Source:
 
     @property
     def url(self) -> str:
-        if "://" in self.repo or self.repo.startswith("git@"):
+        """The clone URL, always SSH.
+
+        Cloning over HTTPS prompts for a username on anything private and
+        fails outright when git is running non-interactively, so shorthand
+        and HTTPS URLs alike are rewritten to git@host:path.git.
+        """
+        if self.repo.startswith("git@"):
             return self.repo
-        return f"https://github.com/{self.repo}.git"
+        parts = split_git_url(
+            self.repo if "://" in self.repo else f"github.com/{self.repo}"
+        )
+        if len(parts) < 2:
+            Out.die(f"could not parse a host and path from repo '{self.repo}'")
+        host, path = parts[0], "/".join(parts[1:])
+        return f"git@{host}:{path}.git"
 
     @property
     def slug(self) -> str:
@@ -469,6 +481,10 @@ def fetch(cfg: Config) -> list[dict]:
         try:
             if dest.exists():
                 Out.say(f"updating {source.slug}")
+                # Existing checkouts may predate this, or have been cloned
+                # over HTTPS by hand. Point them at SSH before fetching.
+                if git("remote", "get-url", "origin", cwd=dest) != source.url:
+                    git("remote", "set-url", "origin", source.url, cwd=dest)
                 git("fetch", "--tags", "--prune", "origin", cwd=dest)
             else:
                 Out.say(f"cloning {source.slug}")
