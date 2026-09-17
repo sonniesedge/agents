@@ -185,6 +185,17 @@ Warnings go into the document rather than to stderr, and failures are JSON
 too, with `ok: false` and a non-zero exit. The flag is accepted either before
 or after the command.
 
+### Colour
+
+Output is colourised when it is going to a terminal, and plain when it is
+piped or redirected, so captured output stays free of escape codes. Colour is
+decided per stream: redirecting stdout to a file still leaves warnings on your
+terminal coloured.
+
+To turn it off regardless, pass `--no-color` (or `--no-colour`), or set
+[`NO_COLOR`](https://no-color.org) in the environment. `--json` never
+colourises.
+
 ## Targets
 
 `config.yaml` decides where things land, grouped by tool:
