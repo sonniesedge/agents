@@ -13,7 +13,9 @@ scripts, references, or assets it needs.
 
 ## Quick start
 
-You need `python3` with PyYAML, and `git`.
+You need [`uv`](https://docs.astral.sh/uv/) and `git` on your system. Nothing
+else: `agents.py` declares its own Python version and dependencies inline, and
+uv builds and caches an environment for it on first run.
 
 Fork this repo rather than cloning it — the skills you author here are yours,
 and the owner prefix below is derived from your own remote. Then:
