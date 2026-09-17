@@ -67,6 +67,66 @@ NAME_LINE = re.compile(r"^name:.*$", re.MULTILINE)
 # output
 
 
+class C:
+    """ANSI styling, decided once per stream.
+
+    Colour is off unless the stream is a terminal, so redirecting stdout to a
+    file keeps it clean while warnings on an attached terminal stay coloured.
+    NO_COLOR (https://no-color.org) and --no-color both disable it, as does
+    --json: escape codes have no place in a document meant for a parser.
+    """
+
+    out = False
+    err = False
+
+    CODES = {
+        "bold": "1",
+        "dim": "2",
+        "red": "31",
+        "green": "32",
+        "yellow": "33",
+        "blue": "34",
+        "cyan": "36",
+    }
+
+    @classmethod
+    def decide(cls, no_color: bool, json_mode: bool) -> None:
+        allowed = not (no_color or json_mode or os.environ.get("NO_COLOR"))
+        cls.out = allowed and sys.stdout.isatty()
+        cls.err = allowed and sys.stderr.isatty()
+
+    @classmethod
+    def paint(cls, msg: str, *styles: str, err: bool = False) -> str:
+        if not (cls.err if err else cls.out):
+            return msg
+        codes = ";".join(cls.CODES[s] for s in styles)
+        return f"\033[{codes}m{msg}\033[0m"
+
+
+def bold(msg: str, **kw) -> str:
+    return C.paint(msg, "bold", **kw)
+
+
+def dim(msg: str, **kw) -> str:
+    return C.paint(msg, "dim", **kw)
+
+
+def red(msg: str, **kw) -> str:
+    return C.paint(msg, "red", **kw)
+
+
+def green(msg: str, **kw) -> str:
+    return C.paint(msg, "green", **kw)
+
+
+def yellow(msg: str, **kw) -> str:
+    return C.paint(msg, "yellow", **kw)
+
+
+def cyan(msg: str, **kw) -> str:
+    return C.paint(msg, "cyan", **kw)
+
+
 class Out:
     quiet = False
     json = False
@@ -81,14 +141,15 @@ class Out:
     def warn(msg: str) -> None:
         Out.warnings.append(msg)
         if not Out.json:
-            print(f"warning: {msg}", file=sys.stderr)
+            print(f"{yellow('warning:', err=True)} {msg}", file=sys.stderr)
 
     @staticmethod
     def die(msg: str) -> NoReturn:
         if Out.json:
             print(json.dumps({"ok": False, "error": msg}, indent=2))
             sys.exit(1)
-        sys.exit(f"error: {msg}")
+        print(f"{red('error:', err=True)} {msg}", file=sys.stderr)
+        sys.exit(1)
 
 
 # --------------------------------------------------------------------------
@@ -480,14 +541,14 @@ def fetch(cfg: Config) -> list[dict]:
         action = "updated" if dest.exists() else "cloned"
         try:
             if dest.exists():
-                Out.say(f"updating {source.slug}")
+                Out.say(f"{cyan('updating')} {bold(source.slug)}")
                 # Existing checkouts may predate this, or have been cloned
                 # over HTTPS by hand. Point them at SSH before fetching.
                 if git("remote", "get-url", "origin", cwd=dest) != source.url:
                     git("remote", "set-url", "origin", source.url, cwd=dest)
                 git("fetch", "--tags", "--prune", "origin", cwd=dest)
             else:
-                Out.say(f"cloning {source.slug}")
+                Out.say(f"{cyan('cloning')} {bold(source.slug)}")
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 try:
                     git("clone", "--quiet", source.url, str(dest))
@@ -509,7 +570,7 @@ def fetch(cfg: Config) -> list[dict]:
                 pass
             git("checkout", "--quiet", "--detach", target, cwd=dest)
             revision = git("rev-parse", "--short", "HEAD", cwd=dest)
-            Out.say(f"  {source.slug} @ {revision}")
+            Out.say(f"  {source.slug} @ {green(revision)}")
             fetched.append(
                 {
                     "source": source.slug,
@@ -568,7 +629,7 @@ def build(cfg: Config, skills: list[Skill]) -> Path:
         (dest / SKILL_FILE).write_text(
             render_skill_md(text, skill.full, skill), encoding="utf-8"
         )
-    Out.say(f"built {len(skills)} skill(s) into {out.relative_to(REPO)}")
+    Out.say(f"built {bold(str(len(skills)))} skill(s) into {dim(str(out.relative_to(REPO)))}")
     return out
 
 
@@ -594,7 +655,7 @@ def relink(target_dir: Path, wanted: dict[str, Path]) -> dict[str, list[str]]:
         if owned_by_repo(existing) and existing.name not in wanted:
             existing.unlink()
             removed.append(existing.name)
-            Out.say(f"  - {existing.name}")
+            Out.say(f"  {red('-')} {existing.name}")
 
     for name, src in sorted(wanted.items()):
         link = target_dir / name
@@ -611,7 +672,7 @@ def relink(target_dir: Path, wanted: dict[str, Path]) -> dict[str, list[str]]:
             continue
         link.symlink_to(src)
         added.append(name)
-        Out.say(f"  + {name}")
+        Out.say(f"  {green('+')} {name}")
 
     return {"added": added, "removed": removed}
 
@@ -625,7 +686,7 @@ def link_file(link: Path, src: Path | None) -> dict[str, list[str]]:
     if src is None or not src.exists():
         if owned_by_repo(link):
             link.unlink()
-            Out.say(f"  - {link.name}")
+            Out.say(f"  {red('-')} {link.name}")
             return {"added": [], "removed": [link.name]}
         return {"added": [], "removed": []}
 
@@ -643,7 +704,7 @@ def link_file(link: Path, src: Path | None) -> dict[str, list[str]]:
 
     link.parent.mkdir(parents=True, exist_ok=True)
     link.symlink_to(src)
-    Out.say(f"  + {link.name}")
+    Out.say(f"  {green('+')} {link.name}")
     return {"added": [link.name], "removed": []}
 
 
@@ -736,13 +797,13 @@ def prune_stale_targets(cfg: Config) -> list[str]:
         if owned_by_repo(path):
             path.unlink()
             pruned.append(str(path))
-            Out.say(f"  - {path} (no longer a target)")
+            Out.say(f"  {red('-')} {path} {dim('(no longer a target)')}")
         elif path.is_dir():
             for entry in sorted(path.iterdir()):
                 if owned_by_repo(entry):
                     entry.unlink()
                     pruned.append(str(entry))
-                    Out.say(f"  - {entry} (no longer a target)")
+                    Out.say(f"  {red('-')} {entry} {dim('(no longer a target)')}")
             if not any(path.iterdir()):
                 path.rmdir()
 
@@ -755,7 +816,7 @@ def link(cfg: Config, built: Path) -> dict:
     result: dict = {"pruned": prune_stale_targets(cfg), "targets": []}
     for tool, kinds in cfg.targets.items():
         for kind, target in kinds.items():
-            Out.say(f"linking {tool}.{kind} -> {target.path}")
+            Out.say(f"{cyan('linking')} {bold(f'{tool}.{kind}')} {dim('->')} {dim(str(target.path))}")
             if kind == "rules" and target.merge:
                 merged = render_rules()
                 if target.is_file:
@@ -852,7 +913,7 @@ def cmd_sync(cfg: Config, args: argparse.Namespace) -> dict:
     skills = collect(cfg)
     result["built"] = [s.full for s in skills]
     result.update(link(cfg, build(cfg, skills)))
-    Out.say("sync complete")
+    Out.say(C.paint("sync complete", "green", "bold"))
     return result
 
 
@@ -863,7 +924,8 @@ def cmd_list(cfg: Config, _: argparse.Namespace) -> dict:
     elif not Out.json:
         width = max(len(s.full) for s in skills)
         for skill in skills:
-            print(f"{skill.full:<{width}}  {skill.origin}")
+            # Pad before colouring: escape codes would skew the width.
+            print(f"{skill.full:<{width}}  {dim(skill.origin)}")
     return {
         "skills": [
             {
@@ -952,24 +1014,30 @@ def cmd_status(cfg: Config, _: argparse.Namespace) -> dict:
     if Out.json:
         return result
 
-    print(f"repo   {REPO}")
-    print(f"owner  {cfg.owner}  ({cfg.owner_from})")
+    print(f"{dim('repo  ')} {REPO}")
+    print(f"{dim('owner ')} {bold(cfg.owner)}  {dim(f'({cfg.owner_from})')}")
     for item in sources:
-        where = f"@ {item['revision']}" if item["fetched"] else "NOT FETCHED"
-        print(f"source {item['source']} {where} (owner: {item['owner']})")
+        where = (
+            f"@ {green(item['revision'])}"
+            if item["fetched"]
+            else red("NOT FETCHED")
+        )
+        owner = dim("(owner: " + item["owner"] + ")")
+        print(f"{dim('source')} {item['source']} {where} {owner}")
 
     for item in targets:
-        note = "  (merged)" if item["merge"] else ""
-        print(f"\n{item['tool']}.{item['kind']} -> {item['path']}{note}")
+        note = dim("  (merged)") if item["merge"] else ""
+        heading = bold(f"{item['tool']}.{item['kind']}")
+        print(f"\n{heading} {dim('->')} {dim(item['path'])}{note}")
         if item["state"] == "absent":
-            print("  (not linked)")
+            print(f"  {yellow('(not linked)')}")
         elif item["state"] == "foreign":
-            print("  (exists, but not linked from this repo)")
+            print(f"  {yellow('(exists, but not linked from this repo)')}")
         elif item["state"] == "empty":
-            print("  (nothing linked from this repo)")
+            print(f"  {dim('(nothing linked from this repo)')}")
         for entry in item["entries"]:
-            origin = f"  <- {entry['origin']}" if entry["origin"] else ""
-            broken = "  BROKEN" if entry["broken"] else ""
+            origin = dim(f"  <- {entry['origin']}") if entry["origin"] else ""
+            broken = f"  {red('BROKEN')}" if entry["broken"] else ""
             print(f"  {entry['name']}{origin}{broken}")
     return result
 
@@ -981,20 +1049,20 @@ def cmd_unlink(cfg: Config, _: argparse.Namespace) -> dict:
             path = target.path
             if kind in FILE_KINDS or target.is_file:
                 if owned_by_repo(path):
-                    Out.say(f"unlinking {tool}.{kind} from {path}")
+                    Out.say(f"{cyan('unlinking')} {bold(f'{tool}.{kind}')} {dim(f'from {path}')}")
                     path.unlink()
                     removed.append(str(path))
-                    Out.say(f"  - {path.name}")
+                    Out.say(f"  {red('-')} {path.name}")
                 continue
             if not path.is_dir():
                 continue
-            Out.say(f"unlinking {tool}.{kind} from {path}")
+            Out.say(f"{cyan('unlinking')} {bold(f'{tool}.{kind}')} {dim(f'from {path}')}")
             for entry in sorted(path.iterdir()):
                 if owned_by_repo(entry):
                     entry.unlink()
                     removed.append(str(entry))
-                    Out.say(f"  - {entry.name}")
-    Out.say(f"removed {len(removed)} symlink(s)")
+                    Out.say(f"  {red('-')} {entry.name}")
+    Out.say(f"removed {bold(str(len(removed)))} symlink(s)")
     return {"removed": removed}
 
 
@@ -1042,6 +1110,14 @@ def global_flags(suppress: bool) -> argparse.ArgumentParser:
         default=default,
         help="print the result as JSON instead of text",
     )
+    parser.add_argument(
+        "--no-color",
+        "--no-colour",
+        action="store_true",
+        default=default,
+        dest="no_color",
+        help="never colourise the output (NO_COLOR is honoured too)",
+    )
     return parser
 
 
@@ -1075,6 +1151,7 @@ def main() -> None:
     args = parser.parse_args()
     Out.quiet = args.quiet
     Out.json = args.json
+    C.decide(args.no_color, args.json)
 
     # No command: point at sync rather than running it. sync reaches the
     # network and rewrites symlinks, so it should be asked for.
