@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pyyaml>=6"]
+# ///
 """Manage user-scoped agent skills, agent files, and plugins.
 
 Locally-authored skills live unprefixed under skills/. Remote skills are
@@ -34,7 +38,12 @@ from pathlib import Path
 try:
     import yaml
 except ImportError:  # pragma: no cover
-    sys.exit("PyYAML is required: pip install pyyaml")
+    sys.exit(
+        "PyYAML is missing. This script declares its own dependencies and is\n"
+        "meant to be run as `./agents.py` (or `uv run agents.py`), which lets\n"
+        "uv build the environment for it. Running it under a bare `python3`\n"
+        "bypasses that and needs PyYAML installed yourself."
+    )
 
 REPO = Path(__file__).resolve().parent
 VENDOR = REPO / ".vendor"
