@@ -461,6 +461,10 @@ def fetch(cfg: Config) -> list[dict]:
         return fetched
     for source in cfg.sources:
         dest = source.checkout
+        # A clone interrupted partway leaves a directory that is not a repo.
+        # Treat it as absent rather than trying to fetch inside it.
+        if dest.exists() and not (dest / ".git").exists():
+            shutil.rmtree(dest)
         action = "updated" if dest.exists() else "cloned"
         try:
             if dest.exists():
@@ -469,7 +473,13 @@ def fetch(cfg: Config) -> list[dict]:
             else:
                 Out.say(f"cloning {source.slug}")
                 dest.parent.mkdir(parents=True, exist_ok=True)
-                git("clone", "--quiet", source.url, str(dest))
+                try:
+                    git("clone", "--quiet", source.url, str(dest))
+                except BaseException:
+                    # Including KeyboardInterrupt: never leave a half-clone
+                    # behind for the next run to trip over.
+                    shutil.rmtree(dest, ignore_errors=True)
+                    raise
 
             ref = source.ref or git(
                 "rev-parse", "--abbrev-ref", "origin/HEAD", cwd=dest
@@ -1078,4 +1088,13 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Ctrl+C is a legitimate way to stop a sync, not a crash. Report it
+        # the way the shell expects and skip the traceback.
+        if Out.json:
+            print(json.dumps({"ok": False, "error": "interrupted"}, indent=2))
+        else:
+            print("\ninterrupted", file=sys.stderr)
+        sys.exit(130)
