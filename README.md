@@ -13,25 +13,35 @@ scripts, references, or assets it needs.
 
 ## Quick start
 
-To symlink the skills, rules, plugins, and agents into your config:
+You need `python3` with PyYAML, and `git`.
+
+Fork this repo rather than cloning it — the skills you author here are yours,
+and the owner prefix below is derived from your own remote. Then:
 
 ```sh
-./agents.py sync
+./agents.py sync     # fetch remote sources, build, symlink into your config
+./agents.py status   # confirm what landed, and where it came from
 ```
 
-Once you've made changes to your own resources or manifest, run it again to
-link everything up.
+That's the whole setup. From then on opencode loads these skills, rules,
+subagents, and plugins in every session, in every project, with no per-project
+configuration.
+
+Once you've changed your own resources or edited `config.yaml`, run `sync`
+again to link everything up. It's safe to re-run.
 
 ## Resource Types
 
-Four kinds of resources, one directory each. Every directory is symlinked out
-as-is, and carries its own `README.md` with the detail.
+Four kinds of resource, one directory each. Each carries its own `README.md`
+with the detail. Three are symlinked out as they are; skills are rendered
+first, to apply the owner prefix, as described under [Naming](#naming).
 
 ### Skills
 
 [`skills/`](skills/) — procedural knowledge any agent loads on demand, when
 a task matches the skill's description. Skills you author live here; skills
-from other people are declared as `sources` and cloned into `.vendor/`.
+from other people are declared as `sources` and cloned into `.vendor/`, a
+generated directory that is gitignored.
 
 ### Subagents
 
@@ -51,29 +61,6 @@ theme. They can be linked as individual files, merged into a single
 runtime to add tools, intercept tool calls, or answer permission prompts. Real
 code with no sandbox, so reach for a skill first. See
 [`plugins/examples/`](plugins/examples/).
-
-## Naming
-
-Every installed skill is prefixed by whoever authored it:
-
-- skills in `skills/` get the `owner` from `config.yaml` → `sonniesedge-chezmoi`
-- skills from a remote get that source's `owner` → `mattpocock-tdd`
-
-`owner: auto` derives the prefix from this repo's own git remote, so a repo
-published at `github.com/sonniesedge/agents` yields `sonniesedge`. Set a
-literal string instead to pin it regardless of remote, and `owner_remote` to
-read something other than `origin`. If `auto` can't resolve, sync stops and
-tells you rather than guessing — a wrong prefix would rename every skill you
-author. `./agents.py status` always reports which route was taken.
-
-The spec wants a skill's `name` to match its directory name, so `sync` renders
-each skill into `.build/skills/<owner>-<name>/` with a rewritten `SKILL.md`,
-then symlinks that. Every other file in the skill is symlinked back to its
-source, so scripts and references stay live — only `SKILL.md` edits need a
-re-run of `./agents.py sync`.
-
-Changing the prefix is safe to do: the next sync removes the old symlinks and
-creates the new ones.
 
 ## Adding skills
 
@@ -125,7 +112,7 @@ the whole repo is scanned.
 
 `fetch` clones into `.vendor/<host>/<org>/<repo>` and checks out `ref`,
 detached. Re-running `sync` pulls the latest and relinks, so remote skills
-stay current. Removing a source from the manifest removes its symlinks on the
+stay current. Removing a source from `config.yaml` removes its symlinks on the
 next sync.
 
 ### Private sources
@@ -134,6 +121,29 @@ next sync.
 `sources` are appended, and any other key it sets overrides. Put work-internal
 or private settings there so this repo can stay public without advertising
 them.
+
+## Naming
+
+Every installed skill is prefixed by whoever authored it:
+
+- skills in `skills/` get the `owner` from `config.yaml` → `sonniesedge-chezmoi`
+- skills from a remote get that source's `owner` → `mattpocock-tdd`
+
+`owner: auto` derives the prefix from this repo's own git remote, so a repo
+published at `github.com/sonniesedge/agents` yields `sonniesedge`. Set a
+literal string instead to pin it regardless of remote, and `owner_remote` to
+read something other than `origin`. If `auto` can't resolve, sync stops and
+tells you rather than guessing — a wrong prefix would rename every skill you
+author. `./agents.py status` always reports which route was taken.
+
+The spec wants a skill's `name` to match its directory name, so `sync` renders
+each skill into `.build/skills/<owner>-<name>/` with a rewritten `SKILL.md`,
+then symlinks that. `.build/` is generated and gitignored. Every other file in
+the skill is symlinked back to its source, so scripts and references stay live
+— only `SKILL.md` edits need a re-run of `./agents.py sync`.
+
+Changing the prefix is safe to do: the next sync removes the old symlinks and
+creates the new ones.
 
 ## Usage
 
@@ -181,7 +191,9 @@ targets:
     config: ~/.config/opencode/opencode.jsonc
 ```
 
-Every kind is optional — drop a line to stop managing it. Five are recognised:
+Every kind is optional — drop a line to stop managing it. The four resource
+types are recognised, plus `config`, which is a tool's own settings file
+rather than a resource this repo defines:
 
 | kind        | shape     | source                       |
 | ----------- | --------- | ---------------------------- |
@@ -238,7 +250,3 @@ Note that `rules/` is deliberately not a root `AGENTS.md`. Both tools check
 for local rule files before global ones, so a root copy would make your
 personal rules double as this repo's project rules whenever you worked in
 here.
-
-## Requirements
-
-`python3` with PyYAML, and `git`.
