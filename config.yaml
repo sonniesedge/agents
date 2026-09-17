@@ -53,6 +53,10 @@ targets:
 # Remote skill sources. Each is a git repo cloned into .vendor/ and scanned
 # for SKILL.md files. Every skill found installs as "<owner>-<skill-name>".
 #
+# Cloning is always over SSH: shorthand and https:// URLs alike are rewritten
+# to git@host:path.git, so private sources work without git stopping to ask
+# for a username.
+#
 # Fields:
 #   repo   (required) git URL, or "org/name" shorthand for GitHub
 #   owner  (optional) prefix applied to skills from this source.
