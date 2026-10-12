@@ -708,6 +708,38 @@ def link_file(link: Path, src: Path | None) -> dict[str, list[str]]:
     return {"added": [link.name], "removed": []}
 
 
+def copy_file(dest: Path, src: Path | None) -> dict[str, list[str]]:
+    """Make `dest` a real copy of `src`, replacing a repo-owned symlink.
+
+    Used for tool config files. A symlink into the repo can be unreadable to
+    sandboxed tools (nono resolves symlinks and checks the target), so the
+    config is copied instead. Re-run sync to push edits made in the repo.
+    """
+    if src is None or not src.exists():
+        if owned_by_repo(dest):
+            dest.unlink()
+            Out.say(f"  {red('-')} {dest.name}")
+            return {"added": [], "removed": [dest.name]}
+        return {"added": [], "removed": []}
+
+    if dest.is_symlink():
+        if not owned_by_repo(dest):
+            Out.warn(f"{dest} is a foreign symlink; leaving it alone")
+            return {"added": [], "removed": []}
+        dest.unlink()
+    elif dest.exists():
+        if dest.read_bytes() == src.read_bytes():
+            return {"added": [], "removed": []}
+        if not dest.is_file():
+            Out.warn(f"{dest} exists and is not a file; leaving it alone")
+            return {"added": [], "removed": []}
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src, dest)
+    Out.say(f"  {green('+')} {dest.name} {dim('(copied)')}")
+    return {"added": [dest.name], "removed": []}
+
+
 def rule_files() -> list[Path]:
     """Themed rule files, in the order they are merged.
 
@@ -827,6 +859,8 @@ def link(cfg: Config, built: Path) -> dict:
                     changed = relink(
                         target.path, {MERGED_RULES: merged} if merged else {}
                     )
+            elif kind == "config":
+                changed = copy_file(target.path, file_source(tool, kind, target.path))
             elif kind in FILE_KINDS:
                 changed = link_file(target.path, file_source(tool, kind, target.path))
             else:

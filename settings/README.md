@@ -3,11 +3,11 @@
 Tool configuration files, one subdirectory per tool.
 
 ```
-settings/opencode/opencode.jsonc   -> ~/.config/opencode/opencode.jsonc
-settings/claude/settings.json      -> ~/.claude/settings.json
+settings/opencode/opencode.jsonc   => ~/.config/opencode/opencode.jsonc
+settings/claude/settings.json      => ~/.claude/settings.json
 ```
 
-Linked by a tool's `config` target:
+Copied (not symlinked) by a tool's `config` target:
 
 ```yaml
 targets:
@@ -17,6 +17,10 @@ targets:
 
 The source is looked up as `settings/<tool>/<the target's filename>`, where
 `<tool>` is the key under `targets`.
+
+Config is copied because sandboxes such as nono resolve symlinks and need the
+target granted too. Edit the file here and re-run `./agents.py sync` (or
+`link`) to push changes; a differing copy at the target is overwritten.
 
 ## Why a subdirectory per tool
 

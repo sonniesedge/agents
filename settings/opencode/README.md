@@ -3,7 +3,7 @@
 `opencode.jsonc` — the global opencode config: providers, models, MCP
 servers, permissions, keybinds.
 
-Linked by:
+Copied to `~/.config/opencode/opencode.jsonc` by (re-run sync after edits):
 
 ```yaml
 targets:
