@@ -708,6 +708,21 @@ def link_file(link: Path, src: Path | None) -> dict[str, list[str]]:
     return {"added": [link.name], "removed": []}
 
 
+def copy_content(dest: Path, src: Path) -> bytes:
+    """The bytes written to `dest`: `src`, with a provenance note for JSONC.
+
+    Plain JSON has no comments, so only .jsonc destinations get the note.
+    """
+    data = src.read_bytes()
+    if dest.suffix != ".jsonc":
+        return data
+    note = (
+        f"// Copied from {src} by agents.py sync.\n"
+        "// Edit the source and re-run sync; changes made here are overwritten.\n"
+    )
+    return note.encode() + data
+
+
 def copy_file(dest: Path, src: Path | None) -> dict[str, list[str]]:
     """Make `dest` a real copy of `src`, replacing a repo-owned symlink.
 
@@ -722,20 +737,21 @@ def copy_file(dest: Path, src: Path | None) -> dict[str, list[str]]:
             return {"added": [], "removed": [dest.name]}
         return {"added": [], "removed": []}
 
+    content = copy_content(dest, src)
     if dest.is_symlink():
         if not owned_by_repo(dest):
             Out.warn(f"{dest} is a foreign symlink; leaving it alone")
             return {"added": [], "removed": []}
         dest.unlink()
     elif dest.exists():
-        if dest.read_bytes() == src.read_bytes():
+        if dest.is_file() and dest.read_bytes() == content:
             return {"added": [], "removed": []}
         if not dest.is_file():
             Out.warn(f"{dest} exists and is not a file; leaving it alone")
             return {"added": [], "removed": []}
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(src, dest)
+    dest.write_bytes(content)
     Out.say(f"  {green('+')} {dest.name} {dim('(copied)')}")
     return {"added": [dest.name], "removed": []}
 
